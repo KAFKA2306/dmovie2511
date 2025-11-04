@@ -119,8 +119,3 @@
 - **`ComfyUI/custom_nodes/`**: カスタムノードが配置されます。
 - **`ComfyUI/output/`**: 生成された動画が保存されます。
 
-
-## ライセンス
-
-
-このプロジェクトは [MIT License](LICENSE) の下で公開されています。
