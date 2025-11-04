@@ -1,0 +1,56 @@
+# Python build artifacts and caches
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environment
+.venv/
+ComfyUI/.venv/
+
+# IDE and editor specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Local settings
+.claude/
+*.local.json
+
+# ComfyUI specific ignores
+# User data, models, custom nodes
+ComfyUI/output/
+ComfyUI/input/
+ComfyUI/models/
+ComfyUI/custom_nodes/
+ComfyUI/temp/
+
+# Local configuration
+ComfyUI/extra_model_paths.yaml
+
+# Keep the example file
+!ComfyUI/extra_model_paths.yaml.example
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Package manager files (uv specific)
+.uv/
+
+# Test related files
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Documentation build artifacts
+docs/_build/
