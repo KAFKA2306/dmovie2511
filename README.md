@@ -91,12 +91,12 @@
    **バッチ生成:**
 
 
-   `automate.py` の `batch_generate` 関数を使用して、複数のプロンプトから動画を生成できます。
+   `automation.core` の `batch_generate` 関数を使用して、複数のプロンプトから動画を生成できます。
 
 
    ```python
    import asyncio
-   from automate import batch_generate
+   from automation.core import batch_generate
 
 
    prompts = [
@@ -114,8 +114,8 @@
 
 
 - **`automate.py`**: 動画生成を自動化するメインスクリプトです。
+- **`automation/`**: クライアント、ワークフロー生成、モデル同期などの自動化ロジックを保持します。
 - **`start_server.py`**: ComfyUI サーバーを起動します。
 - **`ComfyUI/`**: ComfyUI の本体と関連ファイルが含まれます。
 - **`ComfyUI/custom_nodes/`**: カスタムノードが配置されます。
 - **`ComfyUI/output/`**: 生成された動画が保存されます。
-
