@@ -1,31 +1,65 @@
-# ComfyUI 自動動画生成
+# ComfyUI 自動動画生成プロジェクト
 
-WAN モデル向けの ComfyUI ワークフローを一貫した品質で実行するための極小オーケストレーションレイヤーです。単一のエントリポイントに統合された CLI が、サーバー起動からモデル同期、バッチ生成までをカバーし、環境の差異を吸収します。
+このプロジェクトは、[ComfyUI](https://github.com/comfyanonymous/ComfyUI) を使用して、高品質な動画を安定して自動生成するための環境を提供します。特に、WAN モデルのような複雑なワークフローを、誰でも簡単に実行できるように設計されています。
 
-## 価値
-- 1 つの `automation` モジュールからすべての自動化を呼び出せるため運用手順が単純化される
-- declared ワークフロー定義 (`config/workflows.yaml`) により再現性の高い動画生成が行える
-- `uv` + `ruff` パイプラインで依存関係とスタイルを機械的に保証できる
+CLI ツールを通じて、サーバーの起動、モデルの同期、動画の生成まで、一貫した操作で実行できます。
 
-## 必須アセット
-- WAN ファミリーのモデルを Hugging Face から取得し、`ComfyUI/models/diffusion_models`・`text_encoders`・`vae` に配置する
-- カスタムノード (`ComfyUI/custom_nodes/ComfyUI-WanVideoWrapper` など) を upstream 手順どおりに設置する
+## ✨ 主な特徴
 
-## セットアップ
-```bash
-uv sync
-```
+- **シンプルな操作**: `automation` モジュールに統一されたコマンドを通じて、すべての操作を簡単に行えます。
+- **再現性の高い動画生成**: `config/workflows.yaml` に定義されたワークフロー設定により、誰が実行しても同じ品質の動画を生成できます。
+- **クリーンな環境**: `uv` と `ruff` を利用した開発パイプラインにより、依存関係の解決やコーディングスタイルを自動で統一します。
 
 ## 使い方
-- サーバー起動: `uv run python -m automation start-server`
-- モデル同期: `uv run python -m automation download-models`
-- 単一生成 (WAN 既定値): `uv run python -m automation "cinematic shot of a sunset over mountains" wan`
-- バッチ生成: プロンプトを `||` 区切りで渡す (例: `"scene1||scene2||scene3" wan`)
-- ワークフロープリセット: `config/workflows.yaml` のモード名を第 2 引数に指定
 
-## ディレクトリ構成
-- `automation/` 自動化エントリポイントとワークフロー/モデル同期ロジック
-- `config/` ワークフロー定義などの実行時設定
-- `ComfyUI/` コア実装とランタイムフォルダ
-- `docs/` ドキュメント、`AGENTS.md` は運用ガイドライン
-- `pyproject.toml`・`uv.lock` 依存関係管理
+### サーバーの起動
+
+動画生成の前に、まず ComfyUI サーバーを起動する必要があります。
+
+```bash
+uv run python -m automation start-server
+```
+
+### モデルの同期
+
+`download-models` コマンドを使用すると、`config/workflows.yaml` に定義されたモデルを自動でダウンロード・配置できます。
+
+```bash
+uv run python -m automation download-models
+```
+
+### 動画の生成
+
+- **基本的な使い方**:
+    - プロンプト (動画の説明) と、ワークフロー名を指定して実行します。
+    - `wan` ワークフローのデフォルト設定で動画を生成する場合:
+
+    ```bash
+    uv run python -m automation "a cinematic shot of a sunset over mountains" wan
+    ```
+
+- **バッチ処理**:
+    - 複数のプロンプトを `||` で区切ることで、一度に複数の動画を生成できます。
+
+    ```bash
+    uv run python -m automation "scene1||scene2||scene3" wan
+    ```
+
+- **プリセットの利用**:
+    - `config/workflows.yaml` には、あらかじめいくつかのプリセットが定義されています。
+    - プリセット名を指定するだけで、特定のパラメータ設定で動画を生成できます。
+
+    ```bash
+    uv run python -m automation "a beautiful cinematic shot" wan_cinematic_evening
+    ```
+
+## プロジェクトの構造
+
+```
+.
+├── automation/      # 自動化スクリプトのすべて
+├── config/          # ワークフローの定義ファイル
+├── ComfyUI/         # ComfyUI のコアとランタイム
+├── docs/            # プロジェクトのドキュメント
+├── pyproject.toml   # プロジェクトの依存関係
+```
