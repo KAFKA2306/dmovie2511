@@ -40,6 +40,7 @@ dependencies = [
     "opencv-python",
     "pyjwt",
     "httpx",
+    "websockets",
     "imageio-ffmpeg",
     "huggingface_hub",
     "ninja",

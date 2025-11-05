@@ -5,8 +5,8 @@
 ## プロジェクト構造とモジュール構成
 自動化のエントリポイントは `automation/` モジュールに統合し、ルート直下には `pyproject.toml` やメタファイルのみを配置します。ワークフロー定義は `config/workflows.yaml` に集約します。アップストリームのコアは `ComfyUI/` にあり、ここにはアップロード用の `input/` やレンダリング用の `output/` などのランタイムフォルダ、および `app/`、`comfy/`、`comfy_api/`、`middleware/` 内の公式モジュールが含まれます。カスタム統合は `ComfyUI/custom_nodes/` に配置され、主要なディレクトリとして `ComfyUI-WanVideoWrapper`、`ComfyUI-VideoHelperSuite`、`IAMCCS-nodes`、`ComfyUI-MultiGPU`、`ComfyScript` があります。チェックポイントは `ComfyUI/models/<category>/`（例：`diffusion_models/wan2.2.ckpt`）の下に保存します。
 
-## ビルド、テスト、開発コマンド
-リポジトリルートから `uv sync` を使用して、ComfyUI と自動化スクリプトの両方の Python 3.11 依存関係を解決します。`uv run python -m automation start-server` でローカルノードサーバーを起動し、`uv run python -m automation "prompt" wan` でスクリプト化されたジョブを送信します。モデル同期は `uv run python -m automation download-models` を使用します。`uv run ruff check . --fix` でリンティングと静的チェックを実行します。ノード要件を更新する際は、`uv sync` を再実行してロックファイルを更新します。
+## runコマンド
+リポジトリルートから `uv sync` を使用して、ComfyUI と自動化スクリプトの両方の Python 3.11 依存関係を解決します。`uv run python -m automation start-server` をバックグラウンド起動したまま維持し、`uv run python -m automation "prompt" wan` でスクリプト化されたジョブを送信します。モデル同期は `uv run python -m automation download-models` を使用します。
 
 ## 動画生成検証手順
 動画生成を検証する前に、WAN モデルを Hugging Face から取得し `ComfyUI/models/diffusion_models/` および関連する `vae/`、`text_encoders/` に配置します。`uv run python -m automation start-server` でサーバーを起動後、WAN 検証は `uv run python -m automation "シネマティックな朝焼けのタイムラプスショット" wan` を実行します。成功時は `ComfyUI/output/` に `wan_output_*.mp4` が保存され、`automation` モジュールから履歴 JSON が得られます。失敗時は `ComfyUI/logs/latest.log` のサーバーログと HTTP 応答内容を確認し、解像度・フレーム数・コーデック情報を検証してください。

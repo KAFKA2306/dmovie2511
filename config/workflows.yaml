@@ -1,40 +1,73 @@
 defaults:
   negative_prompt: blurry, distorted, child, deformed, doll, multiple faces, glitch
-  steps: 24
+  steps: 25
   cfg: 7.5
-  width: 512
-  height: 320
-  frames: 16
-  frame_rate: 12
+  width: 640
+  height: 360
+  frames: 18
+  frame_rate: 14
   text_encoder_name: umt5-xxl-enc-bf16.safetensors
   model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
   vae_name: Wan2_1_VAE_bf16.safetensors
   filename_prefix: wan_output
 
 templates:
-  wan_cinematic_evening:
-    prompt: cinematic portrait of a healthy young adult woman walking through a sunlit evening market, soft lens flare, detailed skin texture, graceful posture
-    seed: 101
-    frames: 20
-    frame_rate: 14
-    filename_prefix: wan_cinematic_evening
-  wan_fitness_session:
-    prompt: motivational workout montage of a healthy adult woman training in a modern gym, dynamic camera arcs, energetic lighting, sweat glints
-    seed: 202
+  wan_crowded_crosswalk:
+    prompt: midday crosswalk in tokyo with commuters of varied ages and styles, cinematic overhead pan, glistening pavement after light rain
+    seed: 118
+    steps: 27
+    cfg: 8.2
+    width: 640
+    height: 384
+    frames: 24
+    frame_rate: 16
+    filename_prefix: wan_crowded_crosswalk
+  wan_mountain_expedition:
+    prompt: sunrise alpine expedition where climbers coordinate across snow ridges, wide drone sweep, crisp high-altitude atmosphere
+    seed: 229
     steps: 28
-    cfg: 8.0
+    cfg: 7.8
+    width: 768
+    height: 432
+    frames: 20
+    frame_rate: 15
+    filename_prefix: wan_mountain_expedition
+  wan_modern_lab:
+    prompt: collaborative research team calibrating assistive robotics in a modern lab, dolly-in move, interactive holographic displays
+    seed: 327
+    cfg: 7.2
+    width: 512
+    height: 512
     frames: 18
-    filename_prefix: wan_fitness_session
-  wan_art_studio:
-    prompt: creative adult woman painting in a sunlit art studio, gentle handheld camera, pastel palette, focused expression
-    seed: 303
-    frames: 16
-    frame_rate: 10
-    filename_prefix: wan_art_studio
-  wan_coastal_morning:
-    prompt: peaceful morning jog of a healthy adult woman along a bright coastline, wide anamorphic shot, ocean mist, rhythmic pacing
-    seed: 404
-    steps: 26
-    frames: 22
     frame_rate: 12
-    filename_prefix: wan_coastal_morning
+    filename_prefix: wan_modern_lab
+  wan_cultural_festival_night:
+    prompt: lantern-lit cultural festival with families and elders sharing food, slow crane move, warm glowing bokeh
+    seed: 438
+    steps: 26
+    cfg: 7.6
+    width: 704
+    height: 400
+    frames: 22
+    frame_rate: 15
+    filename_prefix: wan_cultural_festival_night
+  wan_urban_cyclist_morning:
+    prompt: energetic commuter cycling through sunrise skyline streets, handheld gimbal pacing, motion blur streaks
+    seed: 549
+    steps: 25
+    cfg: 8.0
+    width: 672
+    height: 384
+    frames: 16
+    frame_rate: 12
+    filename_prefix: wan_urban_cyclist_morning
+  wan_coastal_research_vessel:
+    prompt: marine scientists deploying sensors from a twilight research vessel, steady jib shot, bioluminescent wake trails
+    seed: 660
+    steps: 27
+    cfg: 7.4
+    width: 768
+    height: 432
+    frames: 24
+    frame_rate: 18
+    filename_prefix: wan_coastal_research_vessel
