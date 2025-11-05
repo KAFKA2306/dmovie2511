@@ -50,3 +50,112 @@ templates:
     prompt: Steady jib shot starting wide on a research vessel silhouette against twilight ocean horizon then smoothly descending to deck level. Marine scientists in technical gear deploy sensor equipment over the railing into bioluminescent waters creating glowing turquoise wake trails. Cool blue-hour lighting with magenta-cyan palette and deep teal water tones. Soft natural light from the fading sunset provides gentle rim light on subjects while practical deck lights add warm accents. Cinematic composition with rule-of-thirds framing and negative space emphasizing isolation at sea. Controlled camera movement with inertial dampening maintains smooth glide. Shallow focus on foreground scientists with background horizon dissolving into soft bokeh. Atmospheric haze and salt spray deliver volumetric depth and documentary authenticity.
     seed: 660
     filename_prefix: wan_coastal_research_vessel
+
+scheduling:
+  nightly_window_start: "03:00"
+  nightly_window_end: "05:00"
+  timezone: local
+  metadata_log: ComfyUI/logs/automation_schedule.jsonl
+
+prompts:
+  wan_default: >
+    cinematic shot of a sunset over mountains
+  wan_fallback: >
+    cinematic motion study with layered environments
+  wan_filler: >
+    Advanced audio-reactive motion curves maintain rhythm and micro-timing edits reinforce narrative continuity.
+  script_default: >
+    a beautiful landscape
+  wan_template_passthrough: ""
+
+prompt_defaults:
+  automate: wan_default
+  script: script_default
+  wan_fallback: wan_fallback
+  wan_filler: wan_filler
+
+prompt_components:
+  wan:
+    fallback_key: wan_fallback
+    filler_key: wan_filler
+    min_words: 80
+    max_words: 120
+    segments:
+      - >-
+        Cinematic portrayal of {prompt} with orchestrated focus cues and layered atmospheric depth for grand scale.
+      - >-
+        Camera executes a {camera_move} path with responsive stabilization to sustain fluid parallax and articulate every spatial plane.
+      - >-
+        Lighting relies on {lighting_style} while volumetric haze shapes silhouettes and highlights moving subjects.
+      - >-
+        Color palette leans on {color_grade} to preserve nuanced gradients during rapid motion.
+      - >-
+        Lens emulation mirrors {lens_profile} alongside {capture_technique} to emphasize dimensionality and subject separation.
+      - >-
+        Surface detail features {texture_detail} that animate through the frame without smearing.
+      - >-
+        Post-production integrates {post_treatment} and cinematic motion blur tuned for twenty-four frame playback.
+    descriptors:
+      camera_moves:
+        - >-
+          sinuous gimbal orbit weaving between foreground architecture
+        - >-
+          low altitude drone chase with accelerating parallax arcs
+        - >-
+          steadicam glide with organic drift and counterbalanced pivots
+        - >-
+          multi-axis crane sweep threading vertical reveals through skyline layers
+      lighting_styles:
+        - >-
+          sunrise amber key balanced with cool bounce diffusers and shimmering rim lights
+        - >-
+          diffused cloud cover enriched by lantern glow and volumetric shafts
+        - >-
+          directional hard light softened with programmable LED wraps and reflective boards
+        - >-
+          nocturnal neon ambience layered with practical sconces and motivated edge bloom
+      color_grades:
+        - >-
+          rich teal and amber duotone graded through an ACES pipeline
+        - >-
+          twilight magenta and cobalt palette with lifted film grain
+        - >-
+          earthy greens contrasted by tungsten highlights and cyan lift
+        - >-
+          neutral cinematic log curve accented by saturated primaries and clean skin tones
+      lens_profiles:
+        - >-
+          anamorphic 35mm glass with elongated bokeh and restrained distortion
+        - >-
+          vintage spherical primes delivering micro-contrast and minimal breathing
+        - >-
+          modern full-frame zoom stabilized with inertial dampening
+        - >-
+          macro hybrid optics capturing tactile textures with measured focus falloff
+      capture_techniques:
+        - >-
+          motion control rails synchronized to choreography cues
+        - >-
+          dual-operator focus pulling with predictive overlays
+        - >-
+          multi-axis dolly choreography blended with under-slung craning
+        - >-
+          volumetric cloud capture interleaved with temporal supersampling
+      texture_details:
+        - >-
+          floating dust motes, rain streak refractions, and reflective puddles
+        - >-
+          wind-driven fabric, cascading hair strands, and polished metal gleams
+        - >-
+          bokeh-laced speculars, mist-laden air currents, and luminous signage
+        - >-
+          crystalline particles, cinematic lens flares, and shimmering water vapor
+      post_treatments:
+        - >-
+          film emulation LUTs, halation bloom, and Dolby Vision trim passes
+        - >-
+          spectral denoisers, layered grain, and HDR10 mastering sweeps
+        - >-
+          AI-assisted interpolation, chroma refinement, and selective dehaze
+        - >-
+          ACEScg balancing, channel isolation, and per-channel sharpening

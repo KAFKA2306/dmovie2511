@@ -1,59 +1,56 @@
 import asyncio
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone, time as dt_time
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Sequence
 
 import httpx
 import websockets
+from zoneinfo import ZoneInfo
 
-from .workflows import WAN_TEMPLATES, load_defaults, load_presets
-
-CAMERA_MOVES: Tuple[str, ...] = (
-    "sinuous gimbal orbit weaving between foreground architecture",
-    "low altitude drone chase with accelerating parallax arcs",
-    "steadicam glide with organic drift and counterbalanced pivots",
-    "multi-axis crane sweep threading vertical reveals through skyline layers",
-)
-LIGHTING_STYLES: Tuple[str, ...] = (
-    "sunrise amber key balanced with cool bounce diffusers and shimmering rim lights",
-    "diffused cloud cover enriched by lantern glow and volumetric shafts",
-    "directional hard light softened with programmable LED wraps and reflective boards",
-    "nocturnal neon ambience layered with practical sconces and motivated edge bloom",
-)
-COLOR_GRADES: Tuple[str, ...] = (
-    "rich teal and amber duotone graded through an ACES pipeline",
-    "twilight magenta and cobalt palette with lifted film grain",
-    "earthy greens contrasted by tungsten highlights and cyan lift",
-    "neutral cinematic log curve accented by saturated primaries and clean skin tones",
-)
-LENS_PROFILES: Tuple[str, ...] = (
-    "anamorphic 35mm glass with elongated bokeh and restrained distortion",
-    "vintage spherical primes delivering micro-contrast and minimal breathing",
-    "modern full-frame zoom stabilized with inertial dampening",
-    "macro hybrid optics capturing tactile textures with measured focus falloff",
-)
-CAPTURE_TECHNIQUES: Tuple[str, ...] = (
-    "motion control rails synchronized to choreography cues",
-    "dual-operator focus pulling with predictive overlays",
-    "multi-axis dolly choreography blended with under-slung craning",
-    "volumetric cloud capture interleaved with temporal supersampling",
-)
-TEXTURE_DETAILS: Tuple[str, ...] = (
-    "floating dust motes, rain streak refractions, and reflective puddles",
-    "wind-driven fabric, cascading hair strands, and polished metal gleams",
-    "bokeh-laced speculars, mist-laden air currents, and luminous signage",
-    "crystalline particles, cinematic lens flares, and shimmering water vapor",
-)
-POST_TREATMENTS: Tuple[str, ...] = (
-    "film emulation LUTs, halation bloom, and Dolby Vision trim passes",
-    "spectral denoisers, layered grain, and HDR10 mastering sweeps",
-    "AI-assisted interpolation, chroma refinement, and selective dehaze",
-    "ACEScg balancing, channel isolation, and per-channel sharpening",
+from .workflows import (
+    WAN_TEMPLATES,
+    load_defaults,
+    load_presets,
+    load_prompt_components,
+    load_prompt_defaults,
+    load_prompts,
+    load_scheduling,
 )
 
+SCHEDULING_CONFIG = load_scheduling()
+LOCAL_ZONE = datetime.now().astimezone().tzinfo or timezone.utc
+TIMEZONE_NAME = SCHEDULING_CONFIG.get("timezone")
+if TIMEZONE_NAME and TIMEZONE_NAME != "local":
+    SCHEDULE_ZONE = ZoneInfo(TIMEZONE_NAME)
+else:
+    SCHEDULE_ZONE = LOCAL_ZONE
+WINDOW_START = dt_time.fromisoformat(SCHEDULING_CONFIG.get("nightly_window_start", "03:00"))
+WINDOW_END = dt_time.fromisoformat(SCHEDULING_CONFIG.get("nightly_window_end", "05:00"))
+METADATA_PATH = SCHEDULING_CONFIG.get("metadata_log", "ComfyUI/logs/automation_schedule.jsonl")
 LOG_FILE = Path(__file__).resolve().parent.parent / "ComfyUI" / "logs" / "automation_events.jsonl"
+SCHEDULE_LOG_FILE = Path(__file__).resolve().parent.parent / METADATA_PATH
+SPANS_MIDNIGHT = (WINDOW_END.hour * 60 + WINDOW_END.minute) <= (WINDOW_START.hour * 60 + WINDOW_START.minute)
+PROMPTS = load_prompts()
+PROMPT_DEFAULTS = load_prompt_defaults()
+PROMPT_COMPONENTS = load_prompt_components()
+WAN_COMPONENTS = PROMPT_COMPONENTS.get("wan", {})
+WAN_SEGMENTS = tuple(WAN_COMPONENTS.get("segments", ()))
+WAN_DESCRIPTOR_MAP = WAN_COMPONENTS.get("descriptors", {})
+DESCRIPTORS = [
+    ("camera_move", tuple(WAN_DESCRIPTOR_MAP.get("camera_moves", ()))),
+    ("lighting_style", tuple(WAN_DESCRIPTOR_MAP.get("lighting_styles", ()))),
+    ("color_grade", tuple(WAN_DESCRIPTOR_MAP.get("color_grades", ()))),
+    ("lens_profile", tuple(WAN_DESCRIPTOR_MAP.get("lens_profiles", ()))),
+    ("capture_technique", tuple(WAN_DESCRIPTOR_MAP.get("capture_techniques", ()))),
+    ("texture_detail", tuple(WAN_DESCRIPTOR_MAP.get("texture_details", ()))),
+    ("post_treatment", tuple(WAN_DESCRIPTOR_MAP.get("post_treatments", ()))),
+]
+WAN_FALLBACK_KEY = WAN_COMPONENTS.get("fallback_key") or PROMPT_DEFAULTS.get("wan_fallback", "")
+WAN_FILLER_KEY = WAN_COMPONENTS.get("filler_key") or PROMPT_DEFAULTS.get("wan_filler", "")
+WAN_MIN_WORDS = int(WAN_COMPONENTS.get("min_words", 80))
+WAN_MAX_WORDS = int(WAN_COMPONENTS.get("max_words", 120))
 
 
 def _prompt_digest(text: str) -> str:
@@ -72,38 +69,135 @@ def _descriptor_index(prompt: str) -> int:
     return sum(ord(ch) for ch in prompt)
 
 
-def _pick_descriptor(prompt: str, items: Tuple[str, ...], offset: int) -> str:
+def _pick_descriptor(prompt: str, items: Sequence[str], offset: int) -> str:
+    if not items:
+        return ""
     idx = _descriptor_index(prompt)
     return items[(idx + offset) % len(items)]
 
 
 def enrich_prompt(base_prompt: str) -> str:
-    text = base_prompt.strip() or "cinematic motion study with layered environments"
-    camera = _pick_descriptor(text, CAMERA_MOVES, 0)
-    lighting = _pick_descriptor(text, LIGHTING_STYLES, 1)
-    grade = _pick_descriptor(text, COLOR_GRADES, 2)
-    lens = _pick_descriptor(text, LENS_PROFILES, 3)
-    technique = _pick_descriptor(text, CAPTURE_TECHNIQUES, 4)
-    texture = _pick_descriptor(text, TEXTURE_DETAILS, 5)
-    post = _pick_descriptor(text, POST_TREATMENTS, 6)
-    segments = [
-        f"Cinematic portrayal of {text} with orchestrated focus cues and layered atmospheric depth for grand scale.",
-        f"Camera executes a {camera} path with responsive stabilization to sustain fluid parallax and articulate every spatial plane.",
-        f"Lighting relies on {lighting} while volumetric haze shapes silhouettes and highlights moving subjects.",
-        f"Color palette leans on {grade} to preserve nuanced gradients during rapid motion.",
-        f"Lens emulation mirrors {lens} alongside {technique} to emphasize dimensionality and subject separation.",
-        f"Surface detail features {texture} that animate through the frame without smearing.",
-        f"Post-production integrates {post} and cinematic motion blur tuned for twenty-four frame playback.",
-    ]
-    prompt = " ".join(segments)
-    filler = "Advanced audio-reactive motion curves maintain rhythm and micro-timing edits reinforce narrative continuity."
+    fallback = PROMPTS.get(WAN_FALLBACK_KEY, "")
+    text = base_prompt.strip() or fallback
+    descriptor_values: Dict[str, str] = {}
+    for idx, (name, options) in enumerate(DESCRIPTORS):
+        descriptor_values[name] = _pick_descriptor(text, options, idx)
+    segments = [segment.format(prompt=text, **descriptor_values) for segment in WAN_SEGMENTS]
+    if not segments:
+        prompt = text
+    else:
+        prompt = " ".join(segments)
+    filler = PROMPTS.get(WAN_FILLER_KEY, "")
     words = prompt.split()
-    while len(words) < 80:
+    while len(words) < WAN_MIN_WORDS and filler:
         prompt = f"{prompt} {filler}"
         words = prompt.split()
-    if len(words) > 120:
-        prompt = " ".join(words[:120])
+    if len(words) > WAN_MAX_WORDS:
+        prompt = " ".join(words[:WAN_MAX_WORDS])
     return prompt
+
+
+def _utc_stamp(moment: datetime) -> str:
+    return moment.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _write_schedule_log(payload: Dict[str, Any]) -> None:
+    data = dict(payload)
+    data["timestamp"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    SCHEDULE_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with SCHEDULE_LOG_FILE.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(data, ensure_ascii=False) + "\n")
+
+
+def _current_time() -> datetime:
+    if SCHEDULE_ZONE:
+        return datetime.now(SCHEDULE_ZONE)
+    return datetime.now().astimezone()
+
+
+def _window_anchor(moment: datetime, anchor: dt_time) -> datetime:
+    return moment.replace(hour=anchor.hour, minute=anchor.minute, second=anchor.second, microsecond=0)
+
+
+def _within_window(moment: datetime) -> bool:
+    minutes = moment.hour * 60 + moment.minute
+    start = WINDOW_START.hour * 60 + WINDOW_START.minute
+    end = WINDOW_END.hour * 60 + WINDOW_END.minute
+    if start == end:
+        return True
+    if SPANS_MIDNIGHT:
+        return minutes >= start or minutes < end
+    return start <= minutes < end
+
+
+def _current_window_start(moment: datetime) -> datetime:
+    start = _window_anchor(moment, WINDOW_START)
+    if SPANS_MIDNIGHT and moment.hour * 60 + moment.minute < WINDOW_END.hour * 60 + WINDOW_END.minute:
+        start -= timedelta(days=1)
+    if not SPANS_MIDNIGHT and moment < start:
+        start -= timedelta(days=1)
+    return start
+
+
+def _next_window_start(moment: datetime) -> datetime:
+    if _within_window(moment):
+        return _current_window_start(moment)
+    start = _window_anchor(moment, WINDOW_START)
+    if SPANS_MIDNIGHT:
+        if moment.hour * 60 + moment.minute < WINDOW_END.hour * 60 + WINDOW_END.minute:
+            return start
+        if start <= moment:
+            return start + timedelta(days=1)
+        return start
+    if moment < start:
+        return start
+    return start + timedelta(days=1)
+
+
+async def _align_to_window(mode: str, preset: str | None, digest: str, words: int) -> datetime:
+    now = _current_time()
+    if _within_window(now):
+        window_start = _current_window_start(now)
+        _write_schedule_log(
+            {
+                "event": "window_active",
+                "mode": mode,
+                "preset": preset,
+                "prompt_digest": digest,
+                "window_start_local": window_start.isoformat(timespec="seconds"),
+                "window_start_utc": _utc_stamp(window_start),
+                "words": words,
+            }
+        )
+        return window_start
+    window_start = _next_window_start(now)
+    _write_schedule_log(
+        {
+            "event": "scheduled",
+            "mode": mode,
+            "preset": preset,
+            "prompt_digest": digest,
+            "window_start_local": window_start.isoformat(timespec="seconds"),
+            "window_start_utc": _utc_stamp(window_start),
+            "words": words,
+        }
+    )
+    delay = (window_start - now).total_seconds()
+    if delay > 0:
+        await asyncio.sleep(delay)
+    _write_schedule_log(
+        {
+            "event": "window_open",
+            "mode": mode,
+            "preset": preset,
+            "prompt_digest": digest,
+            "window_start_local": window_start.isoformat(timespec="seconds"),
+            "window_start_utc": _utc_stamp(window_start),
+            "words": words,
+        }
+    )
+    return window_start
+
 
 class ComfyUIClient:
     def __init__(self, server_url: str = "127.0.0.1:8188") -> None:
@@ -309,7 +403,19 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             workflow = {}
     digest = _prompt_digest(used_prompt)
     words = len(used_prompt.split())
+    window_start = await _align_to_window(mode, preset, digest, words)
     start_time = datetime.utcnow()
+    _write_schedule_log(
+        {
+            "event": "execution_started",
+            "mode": mode,
+            "preset": preset,
+            "prompt_digest": digest,
+            "window_start_local": window_start.isoformat(timespec="seconds"),
+            "window_start_utc": _utc_stamp(window_start),
+            "words": words,
+        }
+    )
     _write_log({"event": "queue_start", "mode": mode, "preset": preset, "prompt_digest": digest, "words": words})
     prompt_id = await client.queue_prompt(workflow)
     _write_log({"event": "queued", "mode": mode, "preset": preset, "prompt_id": prompt_id, "prompt_digest": digest})
@@ -319,6 +425,18 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
     outputs = history.get("outputs") if isinstance(history, dict) else None
     nodes = list(outputs) if isinstance(outputs, dict) else []
     _write_log({"event": "completed", "mode": mode, "preset": preset, "prompt_id": prompt_id, "prompt_digest": digest, "elapsed_seconds": round(elapsed, 2), "output_nodes": nodes})
+    _write_schedule_log(
+        {
+            "event": "execution_completed",
+            "mode": mode,
+            "preset": preset,
+            "prompt_digest": digest,
+            "elapsed_seconds": round(elapsed, 2),
+            "window_start_local": window_start.isoformat(timespec="seconds"),
+            "window_start_utc": _utc_stamp(window_start),
+            "words": words,
+        }
+    )
     return history
 
 
@@ -331,5 +449,7 @@ async def generate_templates(names: list[str] | None = None) -> list[Dict[str, A
 
 
 async def batch_generate(prompts: list[str], mode: str = "wan", **kwargs: Any) -> list[Dict[str, Any]]:
-    tasks = [generate_video(prompt, mode, **kwargs) for prompt in prompts]
-    return await asyncio.gather(*tasks)
+    results: list[Dict[str, Any]] = []
+    for prompt in prompts:
+        results.append(await generate_video(prompt, mode, **kwargs))
+    return results

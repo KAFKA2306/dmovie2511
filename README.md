@@ -31,19 +31,19 @@ uv run python -m automation download-models
 ### 動画の生成
 
 - **基本的な使い方**:
-    - プロンプト (動画の説明) と、ワークフロー名を指定して実行します。
+    - `config/workflows.yaml` の `prompts` セクションに登録したプロンプトキーと、ワークフロー名を指定して実行します。
     - `wan` ワークフローのデフォルト設定で動画を生成する場合:
 
     ```bash
-    uv run python -m automation "a cinematic shot of a sunset over mountains" wan
+    uv run python -m automation wan_default wan
     ```
 
 - **テンプレートの利用**:
     - `config/workflows.yaml` の `templates` に、WAN ワークフロー向けのシーン別設定がまとまっています。
-    - テンプレート固有のプロンプトを使う場合は、プロンプトを空文字にしてテンプレート名（例: `wan_mountain_expedition`）をモードとして指定します。
+    - テンプレート固有のプロンプトを使う場合は、`prompts` の `wan_template_passthrough` を指定し、テンプレート名（例: `wan_mountain_expedition`）をモードとして指定します。
 
     ```bash
-    uv run python -m automation "" wan_mountain_expedition
+    uv run python -m automation wan_template_passthrough wan_mountain_expedition
     ```
 
 - **プリセットの利用**:
@@ -51,7 +51,7 @@ uv run python -m automation download-models
     - 実行時に `--preset standard` を付与すると、`standard` の設定で `defaults` が上書きされます。
 
     ```bash
-    uv run python -m automation "aerial establishing shot of a valley" wan --preset standard
+    uv run python -m automation wan_default wan --preset standard
     ```
 
 ## プロジェクトの構造

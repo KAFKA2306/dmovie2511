@@ -6,6 +6,10 @@ from automation import COMFY_ROOT
 from automation.core import batch_generate, generate_templates, generate_video
 from automation.models import sync_wan_assets
 from automation.script import generate_basic_render
+from automation.workflows import WAN_TEMPLATES, load_prompts, load_prompt_defaults
+
+PROMPT_MAP = load_prompts()
+PROMPT_DEFAULTS = load_prompt_defaults()
 
 
 def main() -> None:
@@ -35,14 +39,28 @@ def main() -> None:
             preset = args[preset_idx + 1]
             args = args[:preset_idx] + args[preset_idx + 2:]
         kwargs = {"preset": preset} if preset else {}
-        if len(args) > 1:
-            prompts = args[0].split("||")
-            mode = args[1]
+        if args:
+            prompt_keys = args[0].split("||")
+            tail = list(args[1:])
+        else:
+            prompt_keys = [PROMPT_DEFAULTS["automate"]]
+            tail = []
+        prompts = []
+        for key in prompt_keys:
+            if key in PROMPT_MAP:
+                prompts.append(PROMPT_MAP[key])
+                continue
+            if key in WAN_TEMPLATES:
+                prompts.append("")
+                if not tail:
+                    tail = [key]
+                continue
+            prompts.append(PROMPT_MAP[key])
+        mode = tail[0] if tail else "wan"
+        if len(prompts) > 1:
             asyncio.run(batch_generate(prompts, mode, **kwargs))
             return
-        prompt = args[0] if args else "cinematic shot of a sunset over mountains"
-        mode = args[1] if len(args) > 1 else "wan"
-        asyncio.run(generate_video(prompt, mode, **kwargs))
+        asyncio.run(generate_video(prompts[0], mode, **kwargs))
         return
     if command == "templates":
         names = args if args else None
@@ -51,6 +69,12 @@ def main() -> None:
     if command == "download-models":
         sync_wan_assets()
         return
-    prompt = args[0] if args else "a beautiful landscape"
-    output = args[1] if len(args) > 1 else "output.mp4"
+    if args:
+        prompt_key = args[0]
+        tail = args[1:]
+    else:
+        prompt_key = PROMPT_DEFAULTS["script"]
+        tail = []
+    prompt = PROMPT_MAP[prompt_key]
+    output = tail[0] if tail else "output.mp4"
     generate_basic_render(prompt, output)
