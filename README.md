@@ -38,19 +38,21 @@ uv run python -m automation download-models
     uv run python -m automation "a cinematic shot of a sunset over mountains" wan
     ```
 
-- **バッチ処理**:
-    - 複数のプロンプトを `||` で区切ることで、一度に複数の動画を生成できます。
+- **テンプレートの利用**:
+    - `config/workflows.yaml` の `templates` に、WAN ワークフロー向けのシーン別設定がまとまっています。
+    - テンプレート固有のプロンプトを使う場合は、プロンプトを空文字にしてテンプレート名（例: `wan_mountain_expedition`）をモードとして指定します。
 
     ```bash
-    uv run python -m automation "scene1||scene2||scene3" wan
+    uv run python -m automation "" wan_mountain_expedition
     ```
 
-- **プリセットの利用**:
-    - `config/workflows.yaml` には、あらかじめいくつかのプリセットが定義されています。
-    - プリセット名を指定するだけで、特定のパラメータ設定で動画を生成できます。
+- **プリセットの切り替え**:
+    - 品質や解像度などの共通パラメータは、`config/workflows.yaml` の `presets` セクションに集約します。
+    - 実行時に `--preset` オプションを付けると、定義済みのプリセット（例: `standard`, `high_quality`, `dual_pass`）で `defaults` を上書きできます。
+    - 利用可能なプリセット名は `config/workflows.yaml` を確認してください。
 
     ```bash
-    uv run python -m automation "a beautiful cinematic shot" wan_cinematic_evening
+    uv run python -m automation "aerial establishing shot of a valley" wan --preset high_quality
     ```
 
 ## プロジェクトの構造
