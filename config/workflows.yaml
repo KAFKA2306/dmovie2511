@@ -1,73 +1,63 @@
 defaults:
   negative_prompt: blurry, distorted, child, deformed, doll, multiple faces, glitch
-  steps: 25
-  cfg: 7.5
-  width: 640
-  height: 360
-  frames: 18
-  frame_rate: 14
-  text_encoder_name: umt5-xxl-enc-bf16.safetensors
+  steps: 50
+  high_quality_steps: 80
+  cfg: 4.0
+  dual_pass_cfg: 3.5
+  width: 1280
+  height: 720
+  frames: 81
+  frame_rate: 24
+  text_encoder_name: umt5_xxl_fp8_e4m3fn_scaled.safetensors
   model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
-  vae_name: Wan2_1_VAE_bf16.safetensors
+  vae_name: wan_2.1_vae.safetensors
   filename_prefix: wan_output
+  schedulers:
+    stage_one: euler
+    stage_two: beta
+  dual_stage:
+    enabled: false
+    stage_one_steps: 18
+    stage_two_steps: 25
+    denoise: 0.45
+
+presets:
+  standard:
+    steps: 30
+    cfg: 4.0
+  high_quality:
+    steps: 50
+    cfg: 4.0
+  maximum:
+    steps: 80
+    cfg: 4.0
+  dual_pass:
+    cfg: 3.5
+    dual_stage:
+      enabled: true
 
 templates:
   wan_crowded_crosswalk:
-    prompt: midday crosswalk in tokyo with commuters of varied ages and styles, cinematic overhead pan, glistening pavement after light rain
+    prompt: Overhead crane shot descending toward a bustling midday crosswalk in Tokyo Shibuya. The camera starts elevated capturing geometric pedestrian crossing lines then smoothly pans right following diverse commuters as they navigate the intersection. Glistening pavement reflects scattered puddles from light rain creating mirror surfaces. Soft diffused daylight filters through thin clouds casting even illumination with volumetric haze. Teal-and-orange color grade with shallow depth of field bokeh on background neon signs. Anamorphic lens with organic motion blur. Urban cinematic atmosphere with high contrast and crisp details capturing fabric textures and reflective surfaces.
     seed: 118
-    steps: 27
-    cfg: 8.2
-    width: 640
-    height: 384
-    frames: 24
-    frame_rate: 16
     filename_prefix: wan_crowded_crosswalk
   wan_mountain_expedition:
-    prompt: sunrise alpine expedition where climbers coordinate across snow ridges, wide drone sweep, crisp high-altitude atmosphere
+    prompt: Wide drone sweep ascending from snow-covered alpine ridge at golden hour sunrise. Camera tracks three climbers coordinating rope systems across jagged peaks with ice axes glinting in warm amber light. Cold tones dominate with pink-orange rim lighting on distant summits. Volumetric fog rolls through valleys below creating dramatic depth layers. Shot on 16mm film with subtle grain and bleach-bypass color treatment. Crisp high-altitude atmosphere with sharp focus on climbers transitioning to soft bokeh on background mountain ranges. Low angle perspective emphasizing scale and isolation. Cinematic composition with wide aspect ratio capturing epic wilderness grandeur and human determination against vast natural elements.
     seed: 229
-    steps: 28
-    cfg: 7.8
-    width: 768
-    height: 432
-    frames: 20
-    frame_rate: 15
     filename_prefix: wan_mountain_expedition
   wan_modern_lab:
-    prompt: collaborative research team calibrating assistive robotics in a modern lab, dolly-in move, interactive holographic displays
+    prompt: Dolly-in tracking shot through a sleek modern research laboratory with floor-to-ceiling glass panels. Camera glides past collaborative team of scientists calibrating advanced assistive robotics on central workbench. Interactive holographic displays float in mid-air projecting blue-cyan data visualizations. Three-point lighting setup with soft key light from overhead LED panels and cool rim light defining subject edges. Shallow depth of field isolates foreground activity while background equipment blurs into bokeh. Clean minimal aesthetic with white surfaces and chrome accents. Smooth gimbal stabilization maintaining level horizon. Futuristic atmosphere with volumetric light shafts cutting through controlled environment. Professional color grade with neutral tones and saturated accent colors on holographic elements.
     seed: 327
-    cfg: 7.2
-    width: 512
-    height: 512
-    frames: 18
-    frame_rate: 12
     filename_prefix: wan_modern_lab
   wan_cultural_festival_night:
-    prompt: lantern-lit cultural festival with families and elders sharing food, slow crane move, warm glowing bokeh
+    prompt: Slow crane shot rising through lantern-lit cultural festival courtyard at dusk. Camera starts low capturing families and elders sharing traditional food at wooden tables then elevates revealing layers of glowing paper lanterns suspended overhead. Warm tungsten light from lanterns creates golden bokeh spheres with anamorphic flare characteristics. Soft diffused illumination on faces with gentle rim light separating subjects from background. Rich color palette emphasizing warm oranges and reds contrasted with cool twilight blue sky. Shallow focus maintains sharp detail on foreground subjects while background festivities dissolve into dreamy bokeh. Handheld organic camera movement suggesting intimate documentary style. Nostalgic atmosphere with film grain emulation and lifted shadows. Captures genuine emotional moments of intergenerational connection and cultural celebration.
     seed: 438
-    steps: 26
-    cfg: 7.6
-    width: 704
-    height: 400
-    frames: 22
-    frame_rate: 15
     filename_prefix: wan_cultural_festival_night
   wan_urban_cyclist_morning:
-    prompt: energetic commuter cycling through sunrise skyline streets, handheld gimbal pacing, motion blur streaks
+    prompt: Dynamic handheld gimbal tracking shot following energetic cyclist commuting through sunrise city streets. Camera maintains pace beside rider capturing motion blur streaks on background vehicles and architecture. Golden hour side light rakes across building facades creating dramatic contrast and long shadows. Teal-and-orange grading with warm highlights and cool shadow tones. Shallow depth of field keeps cyclist sharp while urban environment blurs into kinetic bokeh. Low angle perspective emphasizes speed and forward momentum. Volumetric haze from morning mist diffuses sunlight into atmospheric shafts. Modern cinematic lens with controlled breathing and organic focus transitions. High contrast with crushed blacks and lifted highlights. Captures urban energy and determination with fluid camera choreography synchronized to cycling rhythm and street rhythm.
     seed: 549
-    steps: 25
-    cfg: 8.0
-    width: 672
-    height: 384
-    frames: 16
-    frame_rate: 12
     filename_prefix: wan_urban_cyclist_morning
   wan_coastal_research_vessel:
-    prompt: marine scientists deploying sensors from a twilight research vessel, steady jib shot, bioluminescent wake trails
+    prompt: Steady jib shot starting wide on research vessel silhouette against twilight ocean horizon then smoothly descending to deck level. Marine scientists in technical gear deploy sensor equipment over ship railing into bioluminescent waters creating glowing turquoise wake trails. Cool blue-hour lighting with magenta-cyan color palette and deep teal water tones. Soft natural light from fading sunset provides gentle rim light on subjects while practical deck lights add warm accent points. Cinematic composition with rule-of-thirds framing and negative space emphasizing isolation at sea. Controlled camera movement with inertial dampening maintains smooth glide. Shallow focus on foreground scientists with background horizon dissolving into soft bokeh. Atmospheric haze and salt spray create volumetric depth. Professional color grade with lifted shadows preserving detail in low light. Scientific documentary aesthetic capturing focused teamwork in remote maritime environment.
     seed: 660
-    steps: 27
-    cfg: 7.4
-    width: 768
-    height: 432
-    frames: 24
-    frame_rate: 18
     filename_prefix: wan_coastal_research_vessel
