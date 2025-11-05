@@ -2,15 +2,15 @@ defaults:
   negative_prompt: blurry, distorted, child, deformed, doll, multiple faces, glitch
   steps: 50
   high_quality_steps: 80
-  cfg: 4.0
+  cfg: 7.0
   dual_pass_cfg: 3.5
-  width: 1280
-  height: 720
-  frames: 81
+  width: 512
+  height: 512
+  frames: 41
   frame_rate: 24
-  text_encoder_name: umt5_xxl_fp8_e4m3fn_scaled.safetensors
+  text_encoder_name: umt5-xxl-enc-bf16.safetensors
   model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
-  vae_name: wan_2.1_vae.safetensors
+  vae_name: Wan2_1_VAE_bf16.safetensors
   filename_prefix: wan_output
   schedulers:
     stage_one: euler
@@ -24,18 +24,6 @@ defaults:
 presets:
   standard:
     steps: 30
-  high_quality:
-    quality_mode: high
-  maximum:
-    quality_mode: high
-    high_quality_steps: 96
-  dual_pass:
-    cfg: 3.5
-    dual_stage:
-      enabled: true
-      stage_one_steps: 18
-      stage_two_steps: 25
-      denoise: 0.38
 
 templates:
   wan_crowded_crosswalk:

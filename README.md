@@ -46,13 +46,12 @@ uv run python -m automation download-models
     uv run python -m automation "" wan_mountain_expedition
     ```
 
-- **プリセットの切り替え**:
-    - 品質や解像度などの共通パラメータは、`config/workflows.yaml` の `presets` セクションに集約します。
-    - 実行時に `--preset` オプションを付けると、定義済みのプリセット（例: `standard`, `high_quality`, `dual_pass`）で `defaults` を上書きできます。
-    - 利用可能なプリセット名は `config/workflows.yaml` を確認してください。
+- **プリセットの利用**:
+    - 共通パラメータの切り替えは `config/workflows.yaml` の `presets` セクションにある `standard` プリセットで統一しています。
+    - 実行時に `--preset standard` を付与すると、`standard` の設定で `defaults` が上書きされます。
 
     ```bash
-    uv run python -m automation "aerial establishing shot of a valley" wan --preset high_quality
+    uv run python -m automation "aerial establishing shot of a valley" wan --preset standard
     ```
 
 ## プロジェクトの構造

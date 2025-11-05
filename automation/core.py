@@ -1,5 +1,8 @@
 import asyncio
+import hashlib
 import json
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import httpx
@@ -49,6 +52,20 @@ POST_TREATMENTS: Tuple[str, ...] = (
     "AI-assisted interpolation, chroma refinement, and selective dehaze",
     "ACEScg balancing, channel isolation, and per-channel sharpening",
 )
+
+LOG_FILE = Path(__file__).resolve().parent.parent / "ComfyUI" / "logs" / "automation_events.jsonl"
+
+
+def _prompt_digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _write_log(payload: Dict[str, Any]) -> None:
+    data = dict(payload)
+    data["timestamp"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with LOG_FILE.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 
 def _descriptor_index(prompt: str) -> int:
@@ -275,22 +292,34 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> Dict[str, Any]:
 
 async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[str, Any]:
     client = ComfyUIClient()
+    preset = kwargs.get("preset")
+    used_prompt = prompt
     workflow: Dict[str, Any]
     if mode == "wan":
-        workflow = build_wan_workflow(enrich_prompt(prompt), **kwargs)
+        workflow = build_wan_workflow(enrich_prompt(used_prompt), **kwargs)
     else:
         template = WAN_TEMPLATES.get(mode)
         if template:
             data = template.copy()
             data.update(kwargs)
             template_prompt = data.pop("prompt", "")
-            use_prompt = prompt or template_prompt
-            workflow = build_wan_workflow(enrich_prompt(use_prompt), **data)
+            used_prompt = prompt or template_prompt
+            workflow = build_wan_workflow(enrich_prompt(used_prompt), **data)
         else:
             workflow = {}
+    digest = _prompt_digest(used_prompt)
+    words = len(used_prompt.split())
+    start_time = datetime.utcnow()
+    _write_log({"event": "queue_start", "mode": mode, "preset": preset, "prompt_digest": digest, "words": words})
     prompt_id = await client.queue_prompt(workflow)
+    _write_log({"event": "queued", "mode": mode, "preset": preset, "prompt_id": prompt_id, "prompt_digest": digest})
     await client.wait_for_completion(prompt_id)
-    return await client.get_history(prompt_id)
+    history = await client.get_history(prompt_id)
+    elapsed = (datetime.utcnow() - start_time).total_seconds()
+    outputs = history.get("outputs") if isinstance(history, dict) else None
+    nodes = list(outputs) if isinstance(outputs, dict) else []
+    _write_log({"event": "completed", "mode": mode, "preset": preset, "prompt_id": prompt_id, "prompt_digest": digest, "elapsed_seconds": round(elapsed, 2), "output_nodes": nodes})
+    return history
 
 
 async def generate_templates(names: list[str] | None = None) -> list[Dict[str, Any]]:
