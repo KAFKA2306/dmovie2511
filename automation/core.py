@@ -134,15 +134,15 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> Dict[str, Any]:
     steps = kwargs.get("steps", 50)
     if quality_mode == "high":
         steps = kwargs.get("high_quality_steps", steps)
-    cfg = kwargs.get("cfg", 4.0)
+    cfg = kwargs.get("cfg", 7.0)
     dual_pass_cfg = kwargs.get("dual_pass_cfg", 3.5)
     width = kwargs.get("width", 1280)
     height = kwargs.get("height", 720)
     frames = kwargs.get("frames", 81)
     frame_rate = kwargs.get("frame_rate", 24)
-    text_encoder_name = kwargs.get("text_encoder_name", "umt5_xxl_fp8_e4m3fn_scaled.safetensors")
+    text_encoder_name = kwargs.get("text_encoder_name", "umt5-xxl-enc-bf16.safetensors")
     model_name = kwargs.get("model_name", "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors")
-    vae_name = kwargs.get("vae_name", "wan_2.1_vae.safetensors")
+    vae_name = kwargs.get("vae_name", "Wan2_1_VAE_bf16.safetensors")
     filename_prefix = kwargs.get("filename_prefix", "wan_output")
     negative_prompt = kwargs.get("negative_prompt", "")
     schedulers = kwargs.get("schedulers", {})
@@ -291,6 +291,14 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
     prompt_id = await client.queue_prompt(workflow)
     await client.wait_for_completion(prompt_id)
     return await client.get_history(prompt_id)
+
+
+async def generate_templates(names: list[str] | None = None) -> list[Dict[str, Any]]:
+    selection = list(WAN_TEMPLATES) if names is None else [name for name in names if name in WAN_TEMPLATES]
+    results: list[Dict[str, Any]] = []
+    for name in selection:
+        results.append(await generate_video("", name))
+    return results
 
 
 async def batch_generate(prompts: list[str], mode: str = "wan", **kwargs: Any) -> list[Dict[str, Any]]:
