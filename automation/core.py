@@ -5,6 +5,7 @@ from typing import Any, Dict
 import httpx
 import websockets
 
+from .workflows import WAN_TEMPLATES
 
 class ComfyUIClient:
     def __init__(self, server_url: str = "127.0.0.1:8188") -> None:
@@ -135,7 +136,15 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
     if mode == "wan":
         workflow = build_wan_workflow(prompt, **kwargs)
     else:
-        workflow = {}
+        template = WAN_TEMPLATES.get(mode)
+        if template:
+            data = template.copy()
+            data.update(kwargs)
+            template_prompt = data.pop("prompt", "")
+            use_prompt = prompt or template_prompt
+            workflow = build_wan_workflow(use_prompt, **data)
+        else:
+            workflow = {}
     prompt_id = await client.queue_prompt(workflow)
     await client.wait_for_completion(prompt_id)
     return await client.get_history(prompt_id)

@@ -1,0 +1,40 @@
+defaults:
+  negative_prompt: blurry, distorted, child, deformed, doll, multiple faces, glitch
+  steps: 24
+  cfg: 7.5
+  width: 512
+  height: 320
+  frames: 16
+  frame_rate: 12
+  text_encoder_name: umt5-xxl-enc-bf16.safetensors
+  model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
+  vae_name: Wan2_1_VAE_bf16.safetensors
+  filename_prefix: wan_output
+
+templates:
+  wan_cinematic_evening:
+    prompt: cinematic portrait of a healthy young adult woman walking through a sunlit evening market, soft lens flare, detailed skin texture, graceful posture
+    seed: 101
+    frames: 20
+    frame_rate: 14
+    filename_prefix: wan_cinematic_evening
+  wan_fitness_session:
+    prompt: motivational workout montage of a healthy adult woman training in a modern gym, dynamic camera arcs, energetic lighting, sweat glints
+    seed: 202
+    steps: 28
+    cfg: 8.0
+    frames: 18
+    filename_prefix: wan_fitness_session
+  wan_art_studio:
+    prompt: creative adult woman painting in a sunlit art studio, gentle handheld camera, pastel palette, focused expression
+    seed: 303
+    frames: 16
+    frame_rate: 10
+    filename_prefix: wan_art_studio
+  wan_coastal_morning:
+    prompt: peaceful morning jog of a healthy adult woman along a bright coastline, wide anamorphic shot, ocean mist, rhythmic pacing
+    seed: 404
+    steps: 26
+    frames: 22
+    frame_rate: 12
+    filename_prefix: wan_coastal_morning
