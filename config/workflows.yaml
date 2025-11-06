@@ -4,10 +4,10 @@ defaults:
   high_quality_steps: 80
   cfg: 4.0
   dual_pass_cfg: 3.5
-  width: 960
-  height: 540
-  frames: 48
-  frame_rate: 24
+  width: 480
+  height: 320
+  frames: 41
+  frame_rate: 16
   text_encoder_name: umt5-xxl-enc-bf16.safetensors
   model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
   vae_name: Wan2_1_VAE_bf16.safetensors
@@ -35,19 +35,20 @@ vram_profiles:
   safe_16gb:
     width: 960
     height: 540
+  720P:
+    width: 1280
+    height: 720
+  480P:
+    width: 854
+    height: 480
 
 presets:
   standard:
-    frames: 48
-    steps: 28
-    vram_profile: safe_16gb
-
-  medium:
     frames: 41
     steps: 25
     vram_profile: safe_16gb
 
-  fast_test:
+  fast:
     frames: 21
     steps: 20
     vram_profile: safe_16gb

@@ -299,14 +299,58 @@ class ComfyUIClient:
                 json={"prompt": workflow, "client_id": self.client_id},
             )
             data = resp.json()
-            print(f"ComfyUI response: {data}")
             return data["prompt_id"]
 
-    async def wait_for_completion(self, prompt_id: str) -> None:
+    async def wait_for_completion(self, prompt_id: str, context: Dict[str, Any] | None = None) -> None:
+        base = dict(context or {})
+        base["prompt_id"] = prompt_id
+
+        def write(event: str, details: Dict[str, Any]) -> None:
+            payload = dict(base)
+            payload.update(details)
+            payload["event"] = event
+            _write_log(payload)
+
         async with websockets.connect(f"{self.ws_url}?clientId={self.client_id}") as ws:
             while True:
-                msg = json.loads(await ws.recv())
-                if msg["type"] == "executing" and msg["data"]["node"] is None:
+                packet = await ws.recv()
+                if isinstance(packet, bytes):
+                    continue
+                msg = json.loads(packet)
+                kind = msg.get("type")
+                data = msg.get("data") or {}
+                data_prompt = data.get("prompt_id")
+                if data_prompt and data_prompt != prompt_id:
+                    continue
+                if kind == "execution_start":
+                    write("execution_start", {})
+                    print("execution start")
+                elif kind == "execution_cached":
+                    nodes = data.get("nodes") or []
+                    write("execution_cached", {"nodes": nodes})
+                elif kind == "executing":
+                    node = data.get("display_node") or data.get("node")
+                    if node is None:
+                        write("execution_complete", {})
+                        print("execution complete")
+                        break
+                    write("node_executing", {"node": node})
+                    print(f"{node} executing")
+                elif kind == "progress":
+                    node = data.get("node")
+                    value = data.get("value")
+                    maximum = data.get("max")
+                    write("node_progress", {"node": node, "value": value, "max": maximum})
+                    if node is not None and value is not None and maximum is not None:
+                        print(f"{node} progress {value}/{maximum}")
+                elif kind == "execution_error":
+                    message = data.get("exception_message") or ""
+                    write("execution_error", {"message": message})
+                    print(f"execution error {message}")
+                    break
+                elif kind == "execution_interrupted":
+                    write("execution_interrupted", {})
+                    print("execution interrupted")
                     break
 
     async def get_history(self, prompt_id: str) -> Dict[str, Any]:
@@ -597,7 +641,13 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             "schedule_mode": schedule_mode,
         }
     )
-    await client.wait_for_completion(prompt_id)
+    wait_context = {
+        "mode": mode,
+        "preset": preset,
+        "prompt_digest": digest,
+        "schedule_mode": schedule_mode,
+    }
+    await client.wait_for_completion(prompt_id, wait_context)
     history = await client.get_history(prompt_id)
     end_time = datetime.utcnow()
     elapsed = (end_time - start_time).total_seconds()

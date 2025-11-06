@@ -46,6 +46,9 @@ uv run python -m automation download-models
     uv run python -m automation wan_template_passthrough wan_mountain_expedition
     ```
 
+    - テンプレートを `config/workflows.yaml` の定義順にまとめて実行する場合は `uv run python -m automation templates` を使用します。
+    - 空文字プロンプトを渡す運用は CLI が KeyError を発生させるため禁止です。
+
 - **プリセットの利用**:
     - 共通パラメータの切り替えは `config/workflows.yaml` の `presets` セクションにある `standard` プリセットで統一しています。
     - 実行時に `--preset standard` を付与すると、`standard` の設定で `defaults` が上書きされます。
