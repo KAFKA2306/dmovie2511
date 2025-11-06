@@ -1,12 +1,12 @@
 defaults:
   negative_prompt: blurry, distorted, child, deformed, doll, multiple faces, glitch, amputated, deformed hands, extra fingers, extra limbs
-  steps: 40
+  steps: 28
   high_quality_steps: 80
   cfg: 4.0
   dual_pass_cfg: 3.5
-  width: 512
-  height: 512
-  frames: 41
+  width: 960
+  height: 540
+  frames: 48
   frame_rate: 24
   text_encoder_name: umt5-xxl-enc-bf16.safetensors
   model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
@@ -14,22 +14,37 @@ defaults:
   filename_prefix: wan_output
   schedulers:
     stage_one: euler
-    stage_two: beta
+    stage_two: euler/beta
   dual_stage:
     enabled: false
     stage_one_steps: 18
-    stage_two_steps: 25
-    denoise: 0.45
+    stage_two_steps: 28
+    denoise: 0.25
+
+tracking:
+  enabled: true
+  backend: mlflow
+  artifact_dir: ComfyUI/logs/mlruns
+  experiment_name: wan_automation
+  run_name: "{mode}-{digest}-{stamp}"
+  ui_host: 127.0.0.1
+  ui_port: 8350
+  list_limit: 20
 
 vram_profiles:
   safe_16gb:
-    width: 512
-    height: 512
+    width: 960
+    height: 540
 
 presets:
   standard:
-    frames: 81
-    steps: 30
+    frames: 48
+    steps: 28
+    vram_profile: safe_16gb
+
+  medium:
+    frames: 41
+    steps: 25
     vram_profile: safe_16gb
 
   fast_test:

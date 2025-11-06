@@ -27,6 +27,7 @@ dependencies = [
     "SQLAlchemy",
     "av",
     "kornia",
+    "mlflow",
     "spandrel",
     "pydantic",
     "pydantic-settings",

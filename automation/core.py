@@ -18,6 +18,7 @@ from .workflows import (
     load_prompts,
     load_scheduling,
 )
+from .tracking import create_session
 
 SCHEDULING_CONFIG = load_scheduling()
 WINDOW_CONFIG = SCHEDULING_CONFIG.get("window", {})
@@ -315,7 +316,7 @@ class ComfyUIClient:
             return data[prompt_id]
 
 
-def build_wan_workflow(prompt: str, **kwargs: Any) -> Dict[str, Any]:
+def build_wan_workflow(prompt: str, **kwargs: Any) -> tuple[Dict[str, Any], Dict[str, Any]]:
     preset_name = kwargs.get("preset")
     if preset_name:
         presets = load_presets()
@@ -349,6 +350,28 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> Dict[str, Any]:
     stage_one_steps = dual_stage.get("stage_one_steps", steps)
     stage_two_steps = dual_stage.get("stage_two_steps", steps)
     dual_stage_denoise = dual_stage.get("denoise", 0.45)
+    parameters = {
+        "seed": seed,
+        "quality_mode": quality_mode,
+        "steps": steps,
+        "cfg": cfg,
+        "dual_pass_cfg": dual_pass_cfg,
+        "width": width,
+        "height": height,
+        "frames": frames,
+        "frame_rate": frame_rate,
+        "text_encoder_name": text_encoder_name,
+        "model_name": model_name,
+        "vae_name": vae_name,
+        "filename_prefix": filename_prefix,
+        "negative_prompt": negative_prompt,
+        "stage_one_scheduler": stage_one_scheduler,
+        "stage_two_scheduler": stage_two_scheduler,
+        "dual_stage_enabled": dual_stage_enabled,
+        "stage_one_steps": stage_one_steps,
+        "stage_two_steps": stage_two_steps,
+        "dual_stage_denoise": dual_stage_denoise,
+    }
     workflow: Dict[str, Any] = {
         "1": {
             "class_type": "WanVideoTextEncodeCached",
@@ -466,7 +489,7 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> Dict[str, Any]:
             "save_output": True,
         },
     }
-    return workflow
+    return workflow, parameters
 
 
 async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[str, Any]:
@@ -477,8 +500,11 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
     parameters_snapshot = dict(options)
     used_prompt = prompt
     workflow: Dict[str, Any]
+    workflow_parameters: Dict[str, Any]
+    enriched_prompt = used_prompt
     if mode == "wan":
-        workflow = build_wan_workflow(enrich_prompt(used_prompt), **options)
+        enriched_prompt = enrich_prompt(used_prompt)
+        workflow, workflow_parameters = build_wan_workflow(enriched_prompt, **options)
     else:
         template = WAN_TEMPLATES.get(mode)
         if template:
@@ -486,13 +512,28 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             data.update(options)
             template_prompt = data.pop("prompt", "")
             used_prompt = prompt or template_prompt
-            workflow = build_wan_workflow(enrich_prompt(used_prompt), **data)
+            enriched_prompt = enrich_prompt(used_prompt)
+            workflow, workflow_parameters = build_wan_workflow(enriched_prompt, **data)
         else:
             workflow = {}
+            workflow_parameters = {}
     digest = _prompt_digest(used_prompt)
     words = len(used_prompt.split())
     schedule_active = SCHEDULING_ENABLED if use_schedule_flag is None else bool(use_schedule_flag)
     schedule_mode = "window" if schedule_active else "immediate"
+    tracking_parameters = dict(workflow_parameters)
+    for key, value in parameters_snapshot.items():
+        tracking_parameters.setdefault(key, value)
+    tracking_session = create_session(
+        mode=mode,
+        preset=preset,
+        digest=digest,
+        prompt=used_prompt,
+        enriched_prompt=enriched_prompt,
+        parameters=tracking_parameters,
+        workflow=workflow,
+        schedule_mode=schedule_mode,
+    )
     if schedule_active:
         window_start = await _align_to_window(
             mode,
@@ -519,7 +560,9 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
                 "parameters": parameters_snapshot,
             }
         )
+    tracking_session.log_window(window_start)
     start_time = datetime.utcnow()
+    tracking_session.set_start(start_time)
     _write_schedule_log(
         {
             "event": "execution_started",
@@ -543,6 +586,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
         }
     )
     prompt_id = await client.queue_prompt(workflow)
+    tracking_session.log_queue(prompt_id)
     _write_log(
         {
             "event": "queued",
@@ -555,10 +599,19 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
     )
     await client.wait_for_completion(prompt_id)
     history = await client.get_history(prompt_id)
-    elapsed = (datetime.utcnow() - start_time).total_seconds()
+    end_time = datetime.utcnow()
+    elapsed = (end_time - start_time).total_seconds()
     outputs = history.get("outputs") if isinstance(history, dict) else None
     nodes = list(outputs) if isinstance(outputs, dict) else []
     paths = _collect_output_paths(history) if isinstance(history, dict) else []
+    history_payload = history if isinstance(history, dict) else {}
+    tracking_session.log_completion(
+        elapsed,
+        end_time,
+        nodes,
+        paths,
+        history_payload,
+    )
     _write_log(
         {
             "event": "completed",

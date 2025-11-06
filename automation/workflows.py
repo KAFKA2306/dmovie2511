@@ -39,6 +39,11 @@ def load_scheduling() -> dict[str, Any]:
     return data.get("scheduling", {})
 
 
+def load_tracking() -> dict[str, Any]:
+    data = load_config()
+    return data.get("tracking", {})
+
+
 def load_templates() -> dict[str, dict[str, Any]]:
     data = load_config()
     defaults = data.get("defaults", {})

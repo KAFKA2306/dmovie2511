@@ -12,6 +12,7 @@ from automation.core import (
 )
 from automation.models import sync_wan_assets
 from automation.script import generate_basic_render
+from automation.tracking import handle_cli as tracking_handle_cli
 from automation.workflows import WAN_TEMPLATES, load_prompts, load_prompt_defaults
 
 PROMPT_MAP = load_prompts()
@@ -20,7 +21,7 @@ PROMPT_DEFAULTS = load_prompt_defaults()
 
 def main() -> None:
     argv = sys.argv[1:]
-    if argv and argv[0] in {"start-server", "automate", "render", "download-models", "templates", "scheduled"}:
+    if argv and argv[0] in {"start-server", "automate", "render", "download-models", "templates", "scheduled", "experiments"}:
         command = argv[0]
         args = argv[1:]
     else:
@@ -128,6 +129,9 @@ def main() -> None:
     if command == "templates":
         names = args if args else None
         asyncio.run(generate_templates(names))
+        return
+    if command == "experiments":
+        tracking_handle_cli(args)
         return
     if command == "download-models":
         sync_wan_assets()
