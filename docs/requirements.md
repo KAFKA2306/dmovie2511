@@ -1,2 +1,1 @@
-## 実行要件
-- WAN 2.2 の推論は 24GB GPU 前提。2025-11-06T06:00:00Z に `ti2v_5b_*` プリセットが OOM を再現したため `standard` のみ使用する。
+uv run python -m automation start-server --force-fp16
