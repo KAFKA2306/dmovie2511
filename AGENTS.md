@@ -8,6 +8,8 @@
 ## runコマンド
 リポジトリルートで `uv sync` を実行し、Python 3.11 依存関係を統一します。サーバー起動は `uv run python -m automation start-server`、WAN ワークフローの実行は `uv run python -m automation "<prompt>" wan` を用います。テンプレートシーンを利用するときは `prompts` の `wan_template_passthrough` を指定し、テンプレート名をモードに渡します（例: `uv run python -m automation wan_template_passthrough wan_mountain_expedition`）。テンプレートを定義順に一括実行するときは `uv run python -m automation templates` を使用します。空文字プロンプトは CLI が KeyError を発生させるため禁止です。品質プロファイルは `presets` セクションの `standard` のみを使用し、必要に応じて `uv run python -m automation "<prompt>" wan --preset standard` で明示します。モデル同期は `uv run python -m automation download-models` を使用します。実行時のメタデータログは `ComfyUI/logs/automation_events.jsonl` に追記されます。
 
+ワンライナーで実行し、プロンプトは必ず引用符で囲んでください。改行して二行に分割すると `wan_neon_coast_flythrough: command not found` のように解釈されます。`ti2v_5b_*` 系プリセットは 2025-11-06T06:00:00Z に 24GB GPU で OOM を再現したため使用禁止とし、`standard` のみ許可します。
+
 ## 動画生成検証手順
 動画生成を検証する前に、WAN 2.2 リパッケージのモデル一式を Hugging Face から取得し `ComfyUI/models/diffusion_models/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors`、`diffusion_models/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors`、`vae/wan_2.1_vae.safetensors`、`text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors` に配置します。`uv run python -m automation start-server` でサーバーを起動し、検証は `uv run python -m automation wan_template_passthrough wan_mountain_expedition` をベースラインとします。プリセットは `standard` のみで運用し、解像度やステップ数は `defaults` と `standard` の値を突き合わせて確認します。生成結果は `ComfyUI/output/wan_output_*.mp4` に保存され、履歴 JSON は `automation` モジュールから取得できます。失敗時は `ComfyUI/logs/latest.log` と HTTP レスポンスを確認し、解像度・フレーム数・選択したプリセット設定を突き合わせてください。
 

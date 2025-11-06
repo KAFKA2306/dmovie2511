@@ -32,10 +32,10 @@ uv run python -m automation download-models
 
 - **基本的な使い方**:
     - `config/workflows.yaml` の `prompts` セクションに登録したプロンプトキーと、ワークフロー名を指定して実行します。
-    - `wan` ワークフローのデフォルト設定で動画を生成する場合:
+    - `wan` ワークフローのデフォルト設定で動画を生成する場合は、一行でプロンプトを引用符に包んで実行します（改行すると `wan_neon_coast_flythrough: command not found` になるため注意してください）。
 
     ```bash
-    uv run python -m automation wan_default wan
+    uv run python -m automation "wan_default" wan
     ```
 
 - **テンプレートの利用**:
@@ -43,7 +43,7 @@ uv run python -m automation download-models
     - テンプレート固有のプロンプトを使う場合は、`prompts` の `wan_template_passthrough` を指定し、テンプレート名（例: `wan_mountain_expedition`）をモードとして指定します。
 
     ```bash
-    uv run python -m automation wan_template_passthrough wan_mountain_expedition
+    uv run python -m automation "wan_template_passthrough" wan_mountain_expedition
     ```
 
     - テンプレートを `config/workflows.yaml` の定義順にまとめて実行する場合は `uv run python -m automation templates` を使用します。
@@ -51,10 +51,11 @@ uv run python -m automation download-models
 
 - **プリセットの利用**:
     - 共通パラメータの切り替えは `config/workflows.yaml` の `presets` セクションにある `standard` プリセットで統一しています。
+    - `ti2v_5b_*` 系プリセットは 2025-11-06T06:00:00Z 時点で 24GB GPU でも OOM が再現されたため使用禁止です。
     - 実行時に `--preset standard` を付与すると、`standard` の設定で `defaults` が上書きされます。
 
     ```bash
-    uv run python -m automation wan_default wan --preset standard
+    uv run python -m automation "wan_default" wan --preset standard
     ```
 
 ## プロジェクトの構造

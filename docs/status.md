@@ -3,3 +3,4 @@
 - `scheduling.timezone` は `Asia/Tokyo`、ウィンドウは 03:00–05:00 JST に固定。
 - 2025-11-06T03:00:00+09:00 実行予定のジョブ: `wan_modern_lab`（preset `standard`）。`uv run python -m automation scheduled` で確認可能。
 - 予約ジョブを即時に流す場合は `uv run python -m automation scheduled --run-now --preset standard` を使用。
+- 2025-11-06T06:00:00Z：`ti2v_5b_1200p` と `ti2v_5b_720p` のプリセット試行で 24GB GPU が OOM。`standard` のみ運用する。
