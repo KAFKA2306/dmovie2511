@@ -56,24 +56,6 @@ presets:
     steps: 20
     vram_profile: safe_16gb
 
-  ti2v_5b_1200p:
-    frames: 81
-    steps: 28
-    width: 1920
-    height: 1200
-    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
-    vae_name: Wan2.2_VAE.pth
-    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
-
-  ti2v_5b_720p:
-    frames: 81
-    steps: 28
-    width: 1280
-    height: 720
-    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
-    vae_name: Wan2.2_VAE.pth
-    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
-
 
 templates:
   wan_crowded_crosswalk:

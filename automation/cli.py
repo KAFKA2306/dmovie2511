@@ -19,6 +19,21 @@ PROMPT_MAP = load_prompts()
 PROMPT_DEFAULTS = load_prompt_defaults()
 
 
+def _extract_preset_arg(args: list[str]) -> str | None:
+    idx = 0
+    while idx < len(args):
+        if args[idx] == "--preset" and idx + 1 < len(args):
+            return args[idx + 1]
+        idx += 1
+    return None
+
+
+def _filter_by_preset(entries: list[dict], preset: str | None) -> list[dict]:
+    if preset:
+        return [entry for entry in entries if entry.get("preset") == preset]
+    return entries
+
+
 def main() -> None:
     argv = sys.argv[1:]
     if argv and argv[0] in {"start-server", "automate", "render", "download-models", "templates", "scheduled", "experiments"}:
@@ -84,37 +99,15 @@ def main() -> None:
         return
     if command == "scheduled":
         if args and args[0] == "--run-now":
-            tail = args[1:]
-            preset_filter = None
-            idx = 0
-            while idx < len(tail):
-                token = tail[idx]
-                if token == "--preset" and idx + 1 < len(tail):
-                    preset_filter = tail[idx + 1]
-                    idx += 2
-                    continue
-                idx += 1
-            entries = pending_scheduled_jobs()
-            if preset_filter:
-                entries = [entry for entry in entries if entry.get("preset") == preset_filter]
+            preset = _extract_preset_arg(args[1:])
+            entries = _filter_by_preset(pending_scheduled_jobs(), preset)
             if entries:
                 asyncio.run(run_scheduled_jobs(entries))
             else:
                 print("No pending scheduled jobs.")
             return
-        preset_filter = None
-        tail = list(args)
-        idx = 0
-        while idx < len(tail):
-            token = tail[idx]
-            if token == "--preset" and idx + 1 < len(tail):
-                preset_filter = tail[idx + 1]
-                idx += 2
-                continue
-            idx += 1
-        entries = pending_scheduled_jobs()
-        if preset_filter:
-            entries = [entry for entry in entries if entry.get("preset") == preset_filter]
+        preset = _extract_preset_arg(args)
+        entries = _filter_by_preset(pending_scheduled_jobs(), preset)
         if not entries:
             print("No pending scheduled jobs.")
             return
