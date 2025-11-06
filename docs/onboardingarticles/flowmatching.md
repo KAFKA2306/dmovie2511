@@ -163,8 +163,7 @@ L_{\mathrm{DDPM}}(\theta)=
            t \sim \mathrm{Unif}\{1,\dots,T\}}
 \bigl[
   \|
-    \varepsilon
-    -
+    \varepsilon -
     \varepsilon_\theta(x_t, t)
   \|^2
 \bigr]
@@ -200,9 +199,7 @@ $$
 
 ここで
 
-- \(f(x_t, t)\) はドリフト（決定論的な変化）
-- \(g(t)\) は拡散係数（ノイズの強さ）
-- \(w_t\) は標準ブラウン運動
+- \(f(x_t, t)\) はドリフト（決定論的な変化）- \(g(t)\) は拡散係数（ノイズの強さ）- \(w_t\) は標準ブラウン運動
 
 です。
 
@@ -357,8 +354,7 @@ L_{\mathrm{FM}}(\theta)=
 \mathbb{E}
 \bigl[
   \|
-    v_\theta(x_t, t)
-    -
+    v_\theta(x_t, t) -
     v_t(x_0, x_1, t)
   \|^2
 \bigr]
@@ -408,7 +404,7 @@ L_{\mathrm{RF}}(\theta)=
 \bigl[
   \|
     v_\theta\bigl((1 - t)x_0 + t x_1,\; t\bigr)
-    -
+ -
     (x_1 - x_0)
   \|^2
 \bigr]
@@ -445,8 +441,7 @@ $$
 
 連続時間の極限、かつネットワーク表現力が十分で最適解に到達したと仮定すると、
 
-- 拡散モデルのスコア推定
-- Flow Matching のベクトル場回帰
+- 拡散モデルのスコア推定- Flow Matching のベクトル場回帰
 
 は、同じ確率フロー ODE を実現しうる、という意味で「同じクラスの生成過程」を学習しているといえます。
 
@@ -495,8 +490,7 @@ L_{\mathrm{Wan}}(\theta)=
 \mathbb{E}
 \bigl[
   \|
-    u_\theta(z_t, c, t)
-    -
+    u_\theta(z_t, c, t) -
     (z_1 - z_0)
   \|^2
 \bigr]
