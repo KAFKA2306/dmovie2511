@@ -56,6 +56,14 @@ presets:
     steps: 20
     vram_profile: safe_16gb
 
+  ti2v_5b_safe:
+    frames: 41
+    steps: 28
+    vram_profile: safe_16gb
+    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
+    vae_name: Wan2.2_VAE.pth
+    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
+
 
 templates:
   wan_crowded_crosswalk:
