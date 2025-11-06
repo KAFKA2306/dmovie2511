@@ -43,7 +43,7 @@ def main() -> None:
         command = "automate"
         args = argv
     if command == "start-server":
-        subprocess.run([
+        cmd = [
             "uv",
             "run",
             "python",
@@ -52,7 +52,18 @@ def main() -> None:
             "127.0.0.1",
             "--port",
             "8188",
-        ])
+            "--preview-method",
+            "auto",
+            "--reserve-vram",
+            "2.0",
+        ]
+        if "--lowvram" in args:
+            cmd.append("--lowvram")
+        elif "--normalvram" in args:
+            cmd.append("--normalvram")
+        if "--force-fp16" in args:
+            cmd.append("--force-fp16")
+        subprocess.run(cmd)
         return
     if command == "automate":
         preset = None

@@ -21,6 +21,12 @@ defaults:
     stage_two_steps: 28
     denoise: 0.25
 
+server:
+  host: 127.0.0.1
+  port: 8188
+  preview_method: auto
+  reserve_vram_gb: 2.0
+
 tracking:
   enabled: true
   backend: mlflow
