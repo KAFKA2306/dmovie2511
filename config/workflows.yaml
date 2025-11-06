@@ -1,3 +1,13 @@
+models:
+  wan_5b:
+    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
+    vae_name: Wan2.2_VAE.pth
+    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
+  wan_14b:
+    model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
+    vae_name: Wan2_1_VAE_bf16.safetensors
+    text_encoder_name: umt5-xxl-enc-bf16.safetensors
+
 defaults:
   negative_prompt: blurry, distorted, child, deformed, doll, multiple faces, glitch, amputated, deformed hands, extra fingers, extra limbs
   steps: 25
@@ -8,9 +18,9 @@ defaults:
   height: 480
   frames: 25
   frame_rate: 16
-  text_encoder_name: umt5-xxl-enc-bf16.safetensors
-  model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
-  vae_name: Wan2_1_VAE_bf16.safetensors
+  model_name: diffusion_pytorch_model-00001-of-00003.safetensors
+  vae_name: Wan2.2_VAE.pth
+  text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
   filename_prefix: wan_output
   schedulers:
     stage_one: euler
@@ -53,34 +63,38 @@ presets:
     frames: 25
     steps: 25
     vram_profile: safe_16gb
+    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
+    vae_name: Wan2.2_VAE.pth
+    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
+
+  standard_14b:
+    frames: 25
+    steps: 25
+    vram_profile: safe_16gb
+    model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
+    vae_name: Wan2_1_VAE_bf16.safetensors
+    text_encoder_name: umt5-xxl-enc-bf16.safetensors
 
   fast:
     frames: 25
     steps: 20
     vram_profile: safe_16gb
+    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
+    vae_name: Wan2.2_VAE.pth
+    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
 
   low_vram:
     frames: 25
     steps: 20
     vram_profile: low_vram
+    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
+    vae_name: Wan2.2_VAE.pth
+    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
 
   quality:
     frames: 41
     steps: 28
     vram_profile: safe_16gb
-
-  ti2v_5b_safe:
-    frames: 25
-    steps: 28
-    vram_profile: safe_16gb
-    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
-    vae_name: Wan2.2_VAE.pth
-    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
-
-  ti2v_5b_hq:
-    frames: 25
-    steps: 28
-    vram_profile: 720P
     model_name: diffusion_pytorch_model-00001-of-00003.safetensors
     vae_name: Wan2.2_VAE.pth
     text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
