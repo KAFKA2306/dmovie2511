@@ -20,17 +20,25 @@ from .workflows import (
 )
 
 SCHEDULING_CONFIG = load_scheduling()
+WINDOW_CONFIG = SCHEDULING_CONFIG.get("window", {})
+SCHEDULING_ENABLED = bool(SCHEDULING_CONFIG.get("enabled", True))
 LOCAL_ZONE = datetime.now().astimezone().tzinfo or timezone.utc
 TIMEZONE_NAME = SCHEDULING_CONFIG.get("timezone")
 if TIMEZONE_NAME and TIMEZONE_NAME != "local":
     SCHEDULE_ZONE = ZoneInfo(TIMEZONE_NAME)
 else:
     SCHEDULE_ZONE = LOCAL_ZONE
-WINDOW_START = dt_time.fromisoformat(SCHEDULING_CONFIG.get("nightly_window_start", "03:00"))
-WINDOW_END = dt_time.fromisoformat(SCHEDULING_CONFIG.get("nightly_window_end", "05:00"))
+WINDOW_START = dt_time.fromisoformat(
+    WINDOW_CONFIG.get("start_local", SCHEDULING_CONFIG.get("nightly_window_start", "03:00"))
+)
+WINDOW_END = dt_time.fromisoformat(
+    WINDOW_CONFIG.get("end_local", SCHEDULING_CONFIG.get("nightly_window_end", "05:00"))
+)
 METADATA_PATH = SCHEDULING_CONFIG.get("metadata_log", "ComfyUI/logs/automation_schedule.jsonl")
-LOG_FILE = Path(__file__).resolve().parent.parent / "ComfyUI" / "logs" / "automation_events.jsonl"
-SCHEDULE_LOG_FILE = Path(__file__).resolve().parent.parent / METADATA_PATH
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+COMFY_ROOT = PROJECT_ROOT / "ComfyUI"
+LOG_FILE = COMFY_ROOT / "logs" / "automation_events.jsonl"
+SCHEDULE_LOG_FILE = PROJECT_ROOT / METADATA_PATH
 SPANS_MIDNIGHT = (WINDOW_END.hour * 60 + WINDOW_END.minute) <= (WINDOW_START.hour * 60 + WINDOW_START.minute)
 PROMPTS = load_prompts()
 PROMPT_DEFAULTS = load_prompt_defaults()
@@ -51,6 +59,7 @@ WAN_FALLBACK_KEY = WAN_COMPONENTS.get("fallback_key") or PROMPT_DEFAULTS.get("wa
 WAN_FILLER_KEY = WAN_COMPONENTS.get("filler_key") or PROMPT_DEFAULTS.get("wan_filler", "")
 WAN_MIN_WORDS = int(WAN_COMPONENTS.get("min_words", 80))
 WAN_MAX_WORDS = int(WAN_COMPONENTS.get("max_words", 120))
+WAIT_INTERVAL = int(SCHEDULING_CONFIG.get("waiting_log_interval_seconds", 0))
 
 
 def _prompt_digest(text: str) -> str:
@@ -63,6 +72,43 @@ def _write_log(payload: Dict[str, Any]) -> None:
     LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
     with LOG_FILE.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(data, ensure_ascii=False) + "\n")
+
+
+def _collect_output_paths(history: Dict[str, Any]) -> list[str]:
+    outputs = history.get("outputs", {})
+    paths: list[str] = []
+    for node in outputs.values():
+        if isinstance(node, dict):
+            for artifacts in node.values():
+                if isinstance(artifacts, list):
+                    for entry in artifacts:
+                        if isinstance(entry, dict):
+                            fullpath = entry.get("fullpath", "")
+                            if not fullpath:
+                                filename = entry.get("filename", "")
+                                folder = entry.get("type", "")
+                                candidate = COMFY_ROOT
+                                if folder:
+                                    candidate = candidate / folder
+                                subfolder = entry.get("subfolder", "")
+                                if subfolder:
+                                    candidate = candidate / subfolder
+                                if filename:
+                                    fullpath = str(candidate / filename)
+                            if fullpath:
+                                resolved = Path(fullpath).resolve()
+                                project = PROJECT_ROOT.resolve()
+                                resolved_str = str(resolved)
+                                project_str = str(project)
+                                if resolved_str.startswith(project_str):
+                                    rel = resolved_str[len(project_str):]
+                                    if rel.startswith("/"):
+                                        rel = rel[1:]
+                                    if rel and rel not in paths:
+                                        paths.append(rel)
+                                elif resolved_str not in paths:
+                                    paths.append(resolved_str)
+    return paths
 
 
 def _descriptor_index(prompt: str) -> int:
@@ -154,7 +200,15 @@ def _next_window_start(moment: datetime) -> datetime:
     return start + timedelta(days=1)
 
 
-async def _align_to_window(mode: str, preset: str | None, digest: str, words: int) -> datetime:
+async def _align_to_window(
+    mode: str,
+    preset: str | None,
+    digest: str,
+    words: int,
+    prompt: str,
+    schedule_mode: str,
+    parameters: Dict[str, Any],
+) -> datetime:
     now = _current_time()
     if _within_window(now):
         window_start = _current_window_start(now)
@@ -167,6 +221,9 @@ async def _align_to_window(mode: str, preset: str | None, digest: str, words: in
                 "window_start_local": window_start.isoformat(timespec="seconds"),
                 "window_start_utc": _utc_stamp(window_start),
                 "words": words,
+                "schedule_mode": schedule_mode,
+                "prompt": prompt,
+                "parameters": parameters,
             }
         )
         return window_start
@@ -180,11 +237,36 @@ async def _align_to_window(mode: str, preset: str | None, digest: str, words: in
             "window_start_local": window_start.isoformat(timespec="seconds"),
             "window_start_utc": _utc_stamp(window_start),
             "words": words,
+            "schedule_mode": schedule_mode,
+            "prompt": prompt,
+            "parameters": parameters,
         }
     )
     delay = (window_start - now).total_seconds()
     if delay > 0:
-        await asyncio.sleep(delay)
+        if WAIT_INTERVAL > 0:
+            remaining = delay
+            while remaining > WAIT_INTERVAL:
+                await asyncio.sleep(WAIT_INTERVAL)
+                remaining -= WAIT_INTERVAL
+                _write_schedule_log(
+                    {
+                        "event": "awaiting_window",
+                        "mode": mode,
+                        "preset": preset,
+                        "prompt_digest": digest,
+                        "window_start_local": window_start.isoformat(timespec="seconds"),
+                        "window_start_utc": _utc_stamp(window_start),
+                        "words": words,
+                        "time_remaining_seconds": round(remaining, 2),
+                        "schedule_mode": schedule_mode,
+                        "prompt": prompt,
+                        "parameters": parameters,
+                    }
+                )
+                await asyncio.sleep(remaining)
+            else:
+                await asyncio.sleep(delay)
     _write_schedule_log(
         {
             "event": "window_open",
@@ -194,6 +276,9 @@ async def _align_to_window(mode: str, preset: str | None, digest: str, words: in
             "window_start_local": window_start.isoformat(timespec="seconds"),
             "window_start_utc": _utc_stamp(window_start),
             "words": words,
+            "schedule_mode": schedule_mode,
+            "prompt": prompt,
+            "parameters": parameters,
         }
     )
     return window_start
@@ -386,16 +471,19 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> Dict[str, Any]:
 
 async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[str, Any]:
     client = ComfyUIClient()
-    preset = kwargs.get("preset")
+    options = dict(kwargs)
+    use_schedule_flag = options.pop("use_schedule", None)
+    preset = options.get("preset")
+    parameters_snapshot = dict(options)
     used_prompt = prompt
     workflow: Dict[str, Any]
     if mode == "wan":
-        workflow = build_wan_workflow(enrich_prompt(used_prompt), **kwargs)
+        workflow = build_wan_workflow(enrich_prompt(used_prompt), **options)
     else:
         template = WAN_TEMPLATES.get(mode)
         if template:
             data = template.copy()
-            data.update(kwargs)
+            data.update(options)
             template_prompt = data.pop("prompt", "")
             used_prompt = prompt or template_prompt
             workflow = build_wan_workflow(enrich_prompt(used_prompt), **data)
@@ -403,7 +491,34 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             workflow = {}
     digest = _prompt_digest(used_prompt)
     words = len(used_prompt.split())
-    window_start = await _align_to_window(mode, preset, digest, words)
+    schedule_active = SCHEDULING_ENABLED if use_schedule_flag is None else bool(use_schedule_flag)
+    schedule_mode = "window" if schedule_active else "immediate"
+    if schedule_active:
+        window_start = await _align_to_window(
+            mode,
+            preset,
+            digest,
+            words,
+            used_prompt,
+            schedule_mode,
+            parameters_snapshot,
+        )
+    else:
+        window_start = _current_time()
+        _write_schedule_log(
+            {
+                "event": "schedule_immediate",
+                "mode": mode,
+                "preset": preset,
+                "prompt_digest": digest,
+                "window_start_local": window_start.isoformat(timespec="seconds"),
+                "window_start_utc": _utc_stamp(window_start),
+                "words": words,
+                "schedule_mode": schedule_mode,
+                "prompt": used_prompt,
+                "parameters": parameters_snapshot,
+            }
+        )
     start_time = datetime.utcnow()
     _write_schedule_log(
         {
@@ -414,17 +529,49 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             "window_start_local": window_start.isoformat(timespec="seconds"),
             "window_start_utc": _utc_stamp(window_start),
             "words": words,
+            "schedule_mode": schedule_mode,
         }
     )
-    _write_log({"event": "queue_start", "mode": mode, "preset": preset, "prompt_digest": digest, "words": words})
+    _write_log(
+        {
+            "event": "queue_start",
+            "mode": mode,
+            "preset": preset,
+            "prompt_digest": digest,
+            "words": words,
+            "schedule_mode": schedule_mode,
+        }
+    )
     prompt_id = await client.queue_prompt(workflow)
-    _write_log({"event": "queued", "mode": mode, "preset": preset, "prompt_id": prompt_id, "prompt_digest": digest})
+    _write_log(
+        {
+            "event": "queued",
+            "mode": mode,
+            "preset": preset,
+            "prompt_id": prompt_id,
+            "prompt_digest": digest,
+            "schedule_mode": schedule_mode,
+        }
+    )
     await client.wait_for_completion(prompt_id)
     history = await client.get_history(prompt_id)
     elapsed = (datetime.utcnow() - start_time).total_seconds()
     outputs = history.get("outputs") if isinstance(history, dict) else None
     nodes = list(outputs) if isinstance(outputs, dict) else []
-    _write_log({"event": "completed", "mode": mode, "preset": preset, "prompt_id": prompt_id, "prompt_digest": digest, "elapsed_seconds": round(elapsed, 2), "output_nodes": nodes})
+    paths = _collect_output_paths(history) if isinstance(history, dict) else []
+    _write_log(
+        {
+            "event": "completed",
+            "mode": mode,
+            "preset": preset,
+            "prompt_id": prompt_id,
+            "prompt_digest": digest,
+            "elapsed_seconds": round(elapsed, 2),
+            "output_nodes": nodes,
+            "output_paths": paths,
+            "schedule_mode": schedule_mode,
+        }
+    )
     _write_schedule_log(
         {
             "event": "execution_completed",
@@ -435,6 +582,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             "window_start_local": window_start.isoformat(timespec="seconds"),
             "window_start_utc": _utc_stamp(window_start),
             "words": words,
+            "schedule_mode": schedule_mode,
         }
     )
     return history
@@ -452,4 +600,57 @@ async def batch_generate(prompts: list[str], mode: str = "wan", **kwargs: Any) -
     results: list[Dict[str, Any]] = []
     for prompt in prompts:
         results.append(await generate_video(prompt, mode, **kwargs))
+    return results
+
+
+def pending_scheduled_jobs() -> list[Dict[str, Any]]:
+    if not SCHEDULE_LOG_FILE.exists():
+        return []
+    lines = SCHEDULE_LOG_FILE.read_text(encoding="utf-8").splitlines()
+    entries: list[Dict[str, Any]] = []
+    for line in lines:
+        if line:
+            entries.append(json.loads(line))
+    pending_map: dict[str, Dict[str, Any]] = {}
+    order: list[str] = []
+    for entry in entries:
+        digest = entry.get("prompt_digest")
+        if not digest:
+            continue
+        event = entry.get("event")
+        if event in {"execution_started", "execution_completed"}:
+            if digest in pending_map:
+                del pending_map[digest]
+            if digest in order:
+                order.remove(digest)
+            continue
+        if event == "schedule_immediate":
+            if digest in pending_map:
+                del pending_map[digest]
+            if digest in order:
+                order.remove(digest)
+            continue
+        if event in {"scheduled", "awaiting_window", "window_open", "window_active"}:
+            pending_map[digest] = entry
+            if digest not in order:
+                order.append(digest)
+    pending: list[Dict[str, Any]] = []
+    for digest in order:
+        entry = pending_map.get(digest)
+        if entry:
+            pending.append(entry)
+    return sorted(pending, key=lambda item: item.get("window_start_utc", item.get("timestamp", "")))
+
+
+async def run_scheduled_jobs(entries: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    results: list[Dict[str, Any]] = []
+    for entry in entries:
+        parameters = dict(entry.get("parameters", {}))
+        preset = entry.get("preset")
+        if preset and "preset" not in parameters:
+            parameters["preset"] = preset
+        parameters["use_schedule"] = False
+        mode = entry.get("mode", "wan")
+        prompt = entry.get("prompt", "")
+        results.append(await generate_video(prompt, mode, **parameters))
     return results

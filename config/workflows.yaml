@@ -1,8 +1,8 @@
 defaults:
-  negative_prompt: blurry, distorted, child, deformed, doll, multiple faces, glitch
-  steps: 50
+  negative_prompt: blurry, distorted, child, deformed, doll, multiple faces, glitch, amputated, deformed hands, extra fingers, extra limbs
+  steps: 40
   high_quality_steps: 80
-  cfg: 7.0
+  cfg: 4.0
   dual_pass_cfg: 3.5
   width: 512
   height: 512
@@ -21,9 +21,21 @@ defaults:
     stage_two_steps: 25
     denoise: 0.45
 
+vram_profiles:
+  safe_16gb:
+    width: 512
+    height: 512
+
 presets:
   standard:
+    frames: 81
     steps: 30
+    vram_profile: safe_16gb
+
+  fast_test:
+    frames: 21
+    steps: 20
+    vram_profile: safe_16gb
 
 templates:
   wan_crowded_crosswalk:
@@ -64,10 +76,13 @@ templates:
     filename_prefix: wan_jazz_singer
 
 scheduling:
-  nightly_window_start: "03:00"
-  nightly_window_end: "05:00"
-  timezone: local
+  enabled: false
+  timezone: Asia/Tokyo
   metadata_log: ComfyUI/logs/automation_schedule.jsonl
+  waiting_log_interval_seconds: 300
+  window:
+    start_local: "03:00"
+    end_local: "05:00"
 
 prompts:
   wan_default: >
@@ -79,6 +94,8 @@ prompts:
   script_default: >
     a beautiful landscape
   wan_template_passthrough: ""
+  wan_jazz_singer: >
+    Smoky jazz club performance featuring a charismatic singer bathed in warm spotlight with live band accompaniment
 
 prompt_defaults:
   automate: wan_default
@@ -171,4 +188,3 @@ prompt_components:
           AI-assisted interpolation, chroma refinement, and selective dehaze
         - >-
           ACEScg balancing, channel isolation, and per-channel sharpening
-
