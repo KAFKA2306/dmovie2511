@@ -38,6 +38,9 @@ vram_profiles:
   720P:
     width: 1280
     height: 720
+  1200P:
+    width: 1920
+    height: 1200
   480P:
     width: 854
     height: 480
@@ -52,6 +55,25 @@ presets:
     frames: 21
     steps: 20
     vram_profile: safe_16gb
+
+  ti2v_5b_1200p:
+    frames: 81
+    steps: 28
+    width: 1920
+    height: 1200
+    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
+    vae_name: Wan2.2_VAE.pth
+    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
+
+  ti2v_5b_720p:
+    frames: 81
+    steps: 28
+    width: 1280
+    height: 720
+    model_name: diffusion_pytorch_model-00001-of-00003.safetensors
+    vae_name: Wan2.2_VAE.pth
+    text_encoder_name: models_t5_umt5-xxl-enc-bf16.pth
+
 
 templates:
   wan_crowded_crosswalk:
@@ -112,6 +134,12 @@ prompts:
   wan_template_passthrough: ""
   wan_jazz_singer: >
     Smoky jazz club performance featuring a charismatic singer bathed in warm spotlight with live band accompaniment
+  wan_mountain_glide_1200p: >
+    Golden-hour aerial climb following a mountaineer ascending jagged peaks, wind cutting through cloud layers and sun rays igniting icy ridges.
+  wan_neon_coast_flythrough: >
+    Cinematic night-flight over a neon coastal city as rain-soaked streets mirror laser-blue signage and gliding traffic below.
+  wan_glass_lab_study: >
+    Steadicam glide through a minimalist glass lab where holographic schematics orbit a researcher calibrating luminescent drones.
 
 prompt_defaults:
   automate: wan_default
