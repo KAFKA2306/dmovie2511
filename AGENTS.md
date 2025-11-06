@@ -8,7 +8,21 @@
 ## runコマンド
 リポジトリルートで `uv sync` を実行し、Python 3.11 依存関係を統一します。サーバー起動は `uv run python -m automation start-server`、WAN ワークフローの実行は `uv run python -m automation "<prompt>" wan` を用います。テンプレートシーンを利用するときは `prompts` の `wan_template_passthrough` を指定し、テンプレート名をモードに渡します（例: `uv run python -m automation wan_template_passthrough wan_mountain_expedition`）。テンプレートを定義順に一括実行するときは `uv run python -m automation templates` を使用します。空文字プロンプトは CLI が KeyError を発生させるため禁止です。品質プロファイルは `presets` セクションの `standard` を推奨します（例: `uv run python -m automation "<prompt>" wan --preset standard`）。モデル同期は `uv run python -m automation download-models` を使用します。実行時のメタデータログは `ComfyUI/logs/automation_events.jsonl` に追記されます。
 
-VRAM最適化: `start-server` に `--lowvram`（4-6GB GPU向け）、`--normalvram`（6-12GB GPU向け）、`--force-fp16`（メモリ半減）のフラグを追加可能です。16GB GPUではデフォルト設定（`--preview-method auto` + `--reserve-vram 2.0`）で十分です。
+### VRAM最適化設定（標準で有効）
+`start-server` コマンドは**標準で以下の最適化を自動適用**します：
+
+**`--force-fp16`（デフォルトON・重要）:**
+FP32精度をFP16に変換し、**VRAMメモリ使用量を約50%削減**します。WAN 2.2のFP8量子化モデル（`wan2.2_t2v_*_14B_fp8_scaled.safetensors`）と組み合わせることで、16GB GPUで1024x576/25フレームの高品質生成が可能です。品質への影響は最小限で、生成速度も向上します。この設定により、OOMエラーのリスクが大幅に低減されます。
+
+**その他の標準設定:**
+- `--preview-method auto`: プレビュー生成を自動最適化し、不要なVRAM消費を抑制
+- `--reserve-vram 2.0`: OS/他ソフトウェア用に2GBを予約し、システム全体の安定性を確保
+
+**追加の低VRAM向けオプション:**
+- `--lowvram`: 4-6GB GPU向け。モデルをRAMに順次オフロードし、VRAM消費を最小化（処理速度は低下）
+  例: `uv run python -m automation start-server --lowvram`
+- `--normalvram`: 6-12GB GPU向け。FP16精度で動作し、メモリ効率と速度のバランスを取る
+  例: `uv run python -m automation start-server --normalvram`
 
 ワンライナーで実行し、プロンプトは必ず引用符で囲んでください。改行して二行に分割すると `wan_neon_coast_flythrough: command not found` のように解釈されます。
 

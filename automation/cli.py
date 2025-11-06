@@ -56,13 +56,12 @@ def main() -> None:
             "auto",
             "--reserve-vram",
             "2.0",
+            "--force-fp16",
         ]
         if "--lowvram" in args:
             cmd.append("--lowvram")
         elif "--normalvram" in args:
             cmd.append("--normalvram")
-        if "--force-fp16" in args:
-            cmd.append("--force-fp16")
         subprocess.run(cmd)
         return
     if command == "automate":

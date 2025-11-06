@@ -26,6 +26,7 @@ server:
   port: 8188
   preview_method: auto
   reserve_vram_gb: 2.0
+  force_fp16: true
 
 tracking:
   enabled: true
