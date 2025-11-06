@@ -61,16 +61,14 @@ $$
 のマルコフ連鎖を定義します。前向き過程は
 
 $$
-q(x_{1:T} \mid x_0)
-=
+q(x_{1:T} \mid x_0)=
 \prod_{t=1}^T q(x_t \mid x_{t-1})
 $$
 
 と書きます。各ステップはガウス分布です。
 
 $$
-q(x_t \mid x_{t-1})
-=
+q(x_t \mid x_{t-1})=
 \mathcal{N}
 \bigl(
   x_t;\,
@@ -88,8 +86,7 @@ $$
 この連鎖は閉じた形で
 
 $$
-q(x_t \mid x_0)
-=
+q(x_t \mid x_0)=
 \mathcal{N}
 \bigl(
   x_t;\,
@@ -119,8 +116,7 @@ $$
 とし、逆向きマルコフ連鎖
 
 $$
-p_\theta(x_{0:T})
-=
+p_\theta(x_{0:T})=
 p(x_T)
 \prod_{t=1}^T p_\theta(x_{t-1} \mid x_t)
 $$
@@ -130,8 +126,7 @@ $$
 各逆遷移は
 
 $$
-p_\theta(x_{t-1} \mid x_t)
-=
+p_\theta(x_{t-1} \mid x_t)=
 \mathcal{N}
 \bigl(
   x_{t-1};\,
@@ -148,8 +143,7 @@ $$
 前向き過程の閉形式を用いると、任意のステップ \(t\) について
 
 $$
-x_t
-=
+x_t=
 \sqrt{\bar{\alpha}_t}\, x_0
 +
 \sqrt{1 - \bar{\alpha}_t}\, \varepsilon,
@@ -163,8 +157,7 @@ $$
 ノイズ \(\varepsilon\) を予測する関数として訓練する簡略損失は次の形です。
 
 $$
-L_{\mathrm{DDPM}}(\theta)
-=
+L_{\mathrm{DDPM}}(\theta)=
 \mathbb{E}_{x_0 \sim \pi_1,\;
            \varepsilon \sim \mathcal{N}(0,I),\;
            t \sim \mathrm{Unif}\{1,\dots,T\}}
@@ -197,8 +190,7 @@ $$
 とし、前向き SDE を
 
 $$
-\mathrm{d}x_t
-=
+\mathrm{d}x_t=
 f(x_t, t)\,\mathrm{d}t
 +
 g(t)\,\mathrm{d}w_t
@@ -219,8 +211,7 @@ $$
 Song らは、この SDE に対応する「確率フロー ODE」を次のように定義します。
 
 $$
-\mathrm{d}x_t
-=
+\mathrm{d}x_t=
 \Bigl(
   f(x_t, t)
   -
@@ -249,8 +240,7 @@ Flow Matching は、Continuous Normalizing Flows（CNF）を**シミュレーシ
 CNF では、連続時間 ODE
 
 $$
-\frac{\mathrm{d}x_t}{\mathrm{d}t}
-=
+\frac{\mathrm{d}x_t}{\mathrm{d}t}=
 v_\theta(x_t, t),
 \qquad
 t \in [0,1]
@@ -284,8 +274,7 @@ $$
 このとき周辺分布は
 
 $$
-p_t(x)
-=
+p_t(x)=
 \iint
   p_t(x \mid x_0, x_1)\,
   \pi_0(x_0)\,
@@ -300,8 +289,7 @@ $$
 条件付きパスの平均軌道を
 
 $$
-\tilde{x}_t(x_0, x_1)
-=
+\tilde{x}_t(x_0, x_1)=
 \mathbb{E}
 \bigl[
   x_t \mid x_0, x_1
@@ -311,8 +299,7 @@ $$
 その時間微分を「条件付き速度」
 
 $$
-v_t(x_0, x_1, t)
-=
+v_t(x_0, x_1, t)=
 \frac{\mathrm{d}}{\mathrm{d}t}
 \tilde{x}_t(x_0, x_1)
 $$
@@ -322,8 +309,7 @@ $$
 このとき、目標ベクトル場 \(u_t(x)\) を
 
 $$
-u_t(x)
-=
+u_t(x)=
 \mathbb{E}
 \bigl[
   v_t(x_0, x_1, t)
@@ -341,15 +327,13 @@ p_t(x)
 \nabla_x \cdot
 \bigl(
   p_t(x)\,u_t(x)
-\bigr)
-= 0
+\bigr)= 0
 $$
 
 を満たし、ODE
 
 $$
-\frac{\mathrm{d}x_t}{\mathrm{d}t}
-=
+\frac{\mathrm{d}x_t}{\mathrm{d}t}=
 u_t(x_t)
 $$
 
@@ -369,8 +353,7 @@ Flow Matching の学習は、この \(u_t\) をニューラルネット \(v_\the
 とし、損失を
 
 $$
-L_{\mathrm{FM}}(\theta)
-=
+L_{\mathrm{FM}}(\theta)=
 \mathbb{E}
 \bigl[
   \|
@@ -395,8 +378,7 @@ Rectified Flow は Flow Matching の特別なケースで、
 ベースサンプル \(x_0\)、データサンプル \(x_1\) に対して、直線パスを
 
 $$
-x_t
-=
+x_t=
 (1 - t)\,x_0 + t\,x_1,
 \qquad
 t \in [0,1]
@@ -407,10 +389,8 @@ $$
 このとき、平均軌道はパスそのものであり、速度ベクトルは
 
 $$
-v_t(x_0, x_1)
-=
-\frac{\mathrm{d}x_t}{\mathrm{d}t}
-=
+v_t(x_0, x_1)=
+\frac{\mathrm{d}x_t}{\mathrm{d}t}=
 x_1 - x_0
 $$
 
@@ -421,8 +401,7 @@ $$
 Flow Matching の一般形に直線パスを代入すると、損失は次のように簡略化されます。
 
 $$
-L_{\mathrm{RF}}(\theta)
-=
+L_{\mathrm{RF}}(\theta)=
 \mathbb{E}_{x_0 \sim \pi_0,\;
            x_1 \sim \pi_1,\;
            t \sim \mathrm{Unif}(0,1)}
@@ -450,8 +429,7 @@ Flow Matching は「任意の確率パス」を扱える一般枠組みであり
 たとえば、前向き拡散と同型のパス
 
 $$
-x_t
-=
+x_t=
 \alpha_t x_1 + \sigma_t \varepsilon,
 \qquad
 \varepsilon \sim \mathcal{N}(0, I)
@@ -498,16 +476,14 @@ $$
 Wan 論文では、Rectified Flow 型の直線パス
 
 $$
-z_t
-=
+z_t=
 (1 - t)\,z_0 + t\,z_1
 $$
 
 速度
 
 $$
-v_t
-=
+v_t=
 z_1 - z_0
 $$
 
@@ -515,8 +491,7 @@ $$
 DiT ベースのネットワーク \(u_\theta\) が速度を予測する損失
 
 $$
-L_{\mathrm{Wan}}(\theta)
-=
+L_{\mathrm{Wan}}(\theta)=
 \mathbb{E}
 \bigl[
   \|
