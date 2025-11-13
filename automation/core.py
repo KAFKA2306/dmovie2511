@@ -63,6 +63,13 @@ WAN_MAX_WORDS = int(WAN_COMPONENTS.get("max_words", 120))
 WAIT_INTERVAL = int(SCHEDULING_CONFIG.get("waiting_log_interval_seconds", 0))
 
 
+def _resolve_quantization(model_name: str) -> str:
+    name = str(model_name).lower()
+    if name.endswith(".gguf"):
+        return "disabled"
+    return "fp8_e4m3fn_scaled"
+
+
 def _prompt_digest(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
@@ -361,6 +368,7 @@ class ComfyUIClient:
 
 
 def build_wan_workflow(prompt: str, **kwargs: Any) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    explicit_quantization = "quantization" in kwargs and kwargs.get("quantization") is not None
     preset_name = kwargs.get("preset")
     if preset_name:
         presets = load_presets()
@@ -383,6 +391,9 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> tuple[Dict[str, Any], Dict
     frame_rate = kwargs.get("frame_rate", 24)
     text_encoder_name = kwargs.get("text_encoder_name", "umt5-xxl-enc-bf16.safetensors")
     model_name = kwargs.get("model_name", "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors")
+    quantization = kwargs.get("quantization")
+    if not explicit_quantization or quantization is None:
+        quantization = _resolve_quantization(model_name)
     vae_name = kwargs.get("vae_name", "Wan2_1_VAE_bf16.safetensors")
     filename_prefix = kwargs.get("filename_prefix", "wan_output")
     negative_prompt = kwargs.get("negative_prompt", "")
@@ -406,6 +417,7 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> tuple[Dict[str, Any], Dict
         "frame_rate": frame_rate,
         "text_encoder_name": text_encoder_name,
         "model_name": model_name,
+        "quantization": quantization,
         "vae_name": vae_name,
         "filename_prefix": filename_prefix,
         "negative_prompt": negative_prompt,
@@ -434,7 +446,7 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> tuple[Dict[str, Any], Dict
             "inputs": {
                 "model": model_name,
                 "base_precision": "bf16",
-                "quantization": "fp8_e4m3fn_scaled",
+                "quantization": quantization,
                 "load_device": "offload_device",
             },
         },
