@@ -390,7 +390,7 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> tuple[Dict[str, Any], Dict
     frames = kwargs.get("frames", 81)
     frame_rate = kwargs.get("frame_rate", 24)
     text_encoder_name = kwargs.get("text_encoder_name", "umt5-xxl-enc-bf16.safetensors")
-    model_name = kwargs.get("model_name", "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors")
+    model_name = kwargs.get("model_name", "Wan2.2-Animate-14B-Q5_K_M.gguf")
     quantization = kwargs.get("quantization")
     if not explicit_quantization or quantization is None:
         quantization = _resolve_quantization(model_name)

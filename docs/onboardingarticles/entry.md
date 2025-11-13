@@ -39,14 +39,11 @@
 
 ### Wan2.2 14B テキスト→動画の推奨スタック
 
-Wan2.2 の ComfyUI向けリパッケージでは、だいたい次の構成が案内されています（ファイル名の一例）：
+2025年11月時点では、Wan Q5 量子化版（Wan2.2 Animate 14B）の GGUF 1 ファイルで高品質と VRAM 効率を両立できます。推奨構成は次のとおり：
 
-* Diffusion（高ノイズ用）
+* Diffusion（Wan2.2 Animate Q5）
 
-  * `wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors`
-* Diffusion（低ノイズ用）
-
-  * `wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors`
+  * `Wan2.2-Animate-14B-Q5_K_M.gguf`（`QuantStack/Wan2.2-Animate-14B-GGUF`）
 * Text Encoder
 
   * `umt5_xxl_fp8_e4m3fn_scaled.safetensors`
@@ -58,8 +55,7 @@ Wan2.2 の ComfyUI向けリパッケージでは、だいたい次の構成が�
 
 * `ComfyUI/models/diffusion_models/`
 
-  * `wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors`
-  * `wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors`
+  * `Wan2.2-Animate-14B-Q5_K_M.gguf`
 * `ComfyUI/models/text_encoders/`
 
   * `umt5_xxl_fp8_e4m3fn_scaled.safetensors`
@@ -69,8 +65,8 @@ Wan2.2 の ComfyUI向けリパッケージでは、だいたい次の構成が�
 
 **ポイント**
 
-* high / low 両方入れる（後で“デュアルパス”をやるときに必要）
-* テキストエンコーダと VAE も、Wan2.2 用に用意されたものに揃える
+* Q5 GGUF 版は約 13GB で 16GB VRAM 構成でも余裕を持って動かせる
+* テキストエンコーダと VAE は既存の Wan2.2 用資産をそのまま使う
 
 こうしておくと、
 
@@ -179,7 +175,8 @@ defaults:
   frames: 81
   frame_rate: 24
   text_encoder_name: umt5_xxl_fp8_e4m3fn_scaled.safetensors
-  model_name: wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors
+  model_name: Wan2.2-Animate-14B-Q5_K_M.gguf
+  quantization: disabled
   vae_name: wan_2.1_vae.safetensors
   filename_prefix: wan_output
   schedulers:
