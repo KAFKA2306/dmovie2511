@@ -4,11 +4,11 @@ import json
 from datetime import datetime, timedelta, timezone, time as dt_time
 from pathlib import Path
 from typing import Any, Dict, Sequence
-
 import httpx
 import websockets
 from zoneinfo import ZoneInfo
-
+from . import COMFY_ROOT
+from .logs import append_log
 from .workflows import (
     WAN_TEMPLATES,
     load_defaults,
@@ -19,7 +19,6 @@ from .workflows import (
     load_scheduling,
 )
 from .tracking import create_session
-
 SCHEDULING_CONFIG = load_scheduling()
 WINDOW_CONFIG = SCHEDULING_CONFIG.get("window", {})
 SCHEDULING_ENABLED = bool(SCHEDULING_CONFIG.get("enabled", True))
@@ -37,7 +36,6 @@ WINDOW_END = dt_time.fromisoformat(
 )
 METADATA_PATH = SCHEDULING_CONFIG.get("metadata_log", "ComfyUI/logs/automation_schedule.jsonl")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-COMFY_ROOT = PROJECT_ROOT / "ComfyUI"
 LOG_FILE = COMFY_ROOT / "logs" / "automation_events.jsonl"
 SCHEDULE_LOG_FILE = PROJECT_ROOT / METADATA_PATH
 SPANS_MIDNIGHT = (WINDOW_END.hour * 60 + WINDOW_END.minute) <= (WINDOW_START.hour * 60 + WINDOW_START.minute)
@@ -61,27 +59,21 @@ WAN_FILLER_KEY = WAN_COMPONENTS.get("filler_key") or PROMPT_DEFAULTS.get("wan_fi
 WAN_MIN_WORDS = int(WAN_COMPONENTS.get("min_words", 80))
 WAN_MAX_WORDS = int(WAN_COMPONENTS.get("max_words", 120))
 WAIT_INTERVAL = int(SCHEDULING_CONFIG.get("waiting_log_interval_seconds", 0))
-
-
 def _resolve_quantization(model_name: str) -> str:
-    name = str(model_name).lower()
+    name = Path(model_name).name.lower()
     if name.endswith(".gguf"):
         return "disabled"
-    return "fp8_e4m3fn_scaled"
-
-
+    base = "fp8_e4m3fn"
+    if "e5m2" in name:
+        base = "fp8_e5m2"
+    scaled = "scaled" in name
+    if scaled:
+        return f"{base}_scaled"
+    return base
 def _prompt_digest(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
-
-
 def _write_log(payload: Dict[str, Any]) -> None:
-    data = dict(payload)
-    data["timestamp"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
-    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with LOG_FILE.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(data, ensure_ascii=False) + "\n")
-
-
+    append_log(LOG_FILE, payload)
 def _collect_output_paths(history: Dict[str, Any]) -> list[str]:
     outputs = history.get("outputs", {})
     paths: list[str] = []
@@ -117,19 +109,13 @@ def _collect_output_paths(history: Dict[str, Any]) -> list[str]:
                                 elif resolved_str not in paths:
                                     paths.append(resolved_str)
     return paths
-
-
 def _descriptor_index(prompt: str) -> int:
     return sum(ord(ch) for ch in prompt)
-
-
 def _pick_descriptor(prompt: str, items: Sequence[str], offset: int) -> str:
     if not items:
         return ""
     idx = _descriptor_index(prompt)
     return items[(idx + offset) % len(items)]
-
-
 def enrich_prompt(base_prompt: str) -> str:
     fallback = PROMPTS.get(WAN_FALLBACK_KEY, "")
     text = base_prompt.strip() or fallback
@@ -149,30 +135,16 @@ def enrich_prompt(base_prompt: str) -> str:
     if len(words) > WAN_MAX_WORDS:
         prompt = " ".join(words[:WAN_MAX_WORDS])
     return prompt
-
-
 def _utc_stamp(moment: datetime) -> str:
     return moment.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
 def _write_schedule_log(payload: Dict[str, Any]) -> None:
-    data = dict(payload)
-    data["timestamp"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
-    SCHEDULE_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with SCHEDULE_LOG_FILE.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(data, ensure_ascii=False) + "\n")
-
-
+    append_log(SCHEDULE_LOG_FILE, payload)
 def _current_time() -> datetime:
     if SCHEDULE_ZONE:
         return datetime.now(SCHEDULE_ZONE)
     return datetime.now().astimezone()
-
-
 def _window_anchor(moment: datetime, anchor: dt_time) -> datetime:
     return moment.replace(hour=anchor.hour, minute=anchor.minute, second=anchor.second, microsecond=0)
-
-
 def _within_window(moment: datetime) -> bool:
     minutes = moment.hour * 60 + moment.minute
     start = WINDOW_START.hour * 60 + WINDOW_START.minute
@@ -182,8 +154,6 @@ def _within_window(moment: datetime) -> bool:
     if SPANS_MIDNIGHT:
         return minutes >= start or minutes < end
     return start <= minutes < end
-
-
 def _current_window_start(moment: datetime) -> datetime:
     start = _window_anchor(moment, WINDOW_START)
     if SPANS_MIDNIGHT and moment.hour * 60 + moment.minute < WINDOW_END.hour * 60 + WINDOW_END.minute:
@@ -191,8 +161,6 @@ def _current_window_start(moment: datetime) -> datetime:
     if not SPANS_MIDNIGHT and moment < start:
         start -= timedelta(days=1)
     return start
-
-
 def _next_window_start(moment: datetime) -> datetime:
     if _within_window(moment):
         return _current_window_start(moment)
@@ -206,8 +174,6 @@ def _next_window_start(moment: datetime) -> datetime:
     if moment < start:
         return start
     return start + timedelta(days=1)
-
-
 async def _align_to_window(
     mode: str,
     preset: str | None,
@@ -290,15 +256,12 @@ async def _align_to_window(
         }
     )
     return window_start
-
-
 class ComfyUIClient:
     def __init__(self, server_url: str = "127.0.0.1:8188") -> None:
         self.server_url = server_url
         self.http_url = f"http://{server_url}"
         self.ws_url = f"ws://{server_url}/ws"
         self.client_id = "automation_client"
-
     async def queue_prompt(self, workflow: Dict[str, Any]) -> str:
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -307,17 +270,14 @@ class ComfyUIClient:
             )
             data = resp.json()
             return data["prompt_id"]
-
     async def wait_for_completion(self, prompt_id: str, context: Dict[str, Any] | None = None) -> None:
         base = dict(context or {})
         base["prompt_id"] = prompt_id
-
         def write(event: str, details: Dict[str, Any]) -> None:
             payload = dict(base)
             payload.update(details)
             payload["event"] = event
             _write_log(payload)
-
         async with websockets.connect(f"{self.ws_url}?clientId={self.client_id}") as ws:
             while True:
                 packet = await ws.recv()
@@ -359,14 +319,11 @@ class ComfyUIClient:
                     write("execution_interrupted", {})
                     print("execution interrupted")
                     break
-
     async def get_history(self, prompt_id: str) -> Dict[str, Any]:
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{self.http_url}/history/{prompt_id}")
             data = resp.json()
             return data[prompt_id]
-
-
 def build_wan_workflow(prompt: str, **kwargs: Any) -> tuple[Dict[str, Any], Dict[str, Any]]:
     explicit_quantization = "quantization" in kwargs and kwargs.get("quantization") is not None
     preset_name = kwargs.get("preset")
@@ -546,8 +503,6 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> tuple[Dict[str, Any], Dict
         },
     }
     return workflow, parameters
-
-
 async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[str, Any]:
     client = ComfyUIClient()
     options = dict(kwargs)
@@ -701,23 +656,17 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
         }
     )
     return history
-
-
 async def generate_templates(names: list[str] | None = None) -> list[Dict[str, Any]]:
     selection = list(WAN_TEMPLATES) if names is None else [name for name in names if name in WAN_TEMPLATES]
     results: list[Dict[str, Any]] = []
     for name in selection:
         results.append(await generate_video("", name))
     return results
-
-
 async def batch_generate(prompts: list[str], mode: str = "wan", **kwargs: Any) -> list[Dict[str, Any]]:
     results: list[Dict[str, Any]] = []
     for prompt in prompts:
         results.append(await generate_video(prompt, mode, **kwargs))
     return results
-
-
 def pending_scheduled_jobs() -> list[Dict[str, Any]]:
     if not SCHEDULE_LOG_FILE.exists():
         return []
@@ -755,8 +704,6 @@ def pending_scheduled_jobs() -> list[Dict[str, Any]]:
         if entry:
             pending.append(entry)
     return sorted(pending, key=lambda item: item.get("window_start_utc", item.get("timestamp", "")))
-
-
 async def run_scheduled_jobs(entries: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
     results: list[Dict[str, Any]] = []
     for entry in entries:

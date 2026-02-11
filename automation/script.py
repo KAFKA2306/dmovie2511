@@ -1,8 +1,5 @@
 from pathlib import Path
-
 from . import ensure_comfy_path
-
-
 def generate_basic_render(prompt: str, output_path: str = "output.mp4") -> str:
     ensure_comfy_path()
     from comfy_script.runtime import load
@@ -15,7 +12,6 @@ def generate_basic_render(prompt: str, output_path: str = "output.mp4") -> str:
         VAEDecode,
         SaveImage,
     )
-
     load()
     prefix = Path(output_path).stem
     with Workflow():

@@ -3,13 +3,10 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple
-
 from mlflow.entities import Run
 from mlflow.tracking import MlflowClient
 import torch
-
 from .workflows import load_tracking
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG = load_tracking()
 ENABLED = bool(CONFIG.get("enabled", False))
@@ -19,26 +16,17 @@ RUN_NAME_PATTERN = CONFIG.get("run_name", "{mode}-{digest}-{stamp}")
 UI_HOST = CONFIG.get("ui_host", "127.0.0.1")
 UI_PORT = int(CONFIG.get("ui_port", 8250))
 LIST_LIMIT = int(CONFIG.get("list_limit", 20))
-
 CLIENT: MlflowClient | None = None
 EXPERIMENT_ID: str | None = None
 TRACKING_URI: str | None = None
-
-
 def _utc_iso(moment: datetime) -> str:
     return moment.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
 def _local_iso(moment: datetime) -> str:
     return moment.astimezone().isoformat()
-
-
 def _tracking_path() -> Path:
     path = PROJECT_ROOT / ARTIFACT_DIR
     path.mkdir(parents=True, exist_ok=True)
     return path.resolve()
-
-
 def _client() -> Tuple[MlflowClient, str, str]:
     global CLIENT, EXPERIMENT_ID, TRACKING_URI
     if CLIENT is not None and EXPERIMENT_ID is not None and TRACKING_URI is not None:
@@ -55,8 +43,6 @@ def _client() -> Tuple[MlflowClient, str, str]:
     EXPERIMENT_ID = experiment_id
     TRACKING_URI = uri
     return client, experiment_id, uri
-
-
 def _stringify_params(values: Dict[str, Any]) -> Dict[str, str]:
     result: Dict[str, str] = {}
     for key, value in values.items():
@@ -65,8 +51,6 @@ def _stringify_params(values: Dict[str, Any]) -> Dict[str, str]:
         else:
             result[key] = str(value)
     return result
-
-
 def _gpu_tags() -> Dict[str, str]:
     if not torch.cuda.is_available():
         return {
@@ -83,18 +67,13 @@ def _gpu_tags() -> Dict[str, str]:
         tags["gpu_primary_name"] = name
         tags["gpu_primary_total_vram_bytes"] = str(total)
     return tags
-
-
 class NullSession:
     def log_window(self, window_start: datetime) -> None:
         return
-
     def set_start(self, moment: datetime) -> None:
         return
-
     def log_queue(self, prompt_id: str) -> None:
         return
-
     def log_completion(
         self,
         elapsed: float,
@@ -104,8 +83,6 @@ class NullSession:
         history: Dict[str, Any],
     ) -> None:
         return
-
-
 class TrackingSession:
     def __init__(
         self,
@@ -148,19 +125,15 @@ class TrackingSession:
         self.client.log_text(self.run_id, enriched_prompt, "prompt_enriched.txt")
         self.client.log_dict(self.run_id, workflow, "workflow.json")
         self.start_time: datetime | None = None
-
     def log_window(self, window_start: datetime) -> None:
         self.client.set_tag(self.run_id, "window_start_utc", _utc_iso(window_start))
         self.client.set_tag(self.run_id, "window_start_local", _local_iso(window_start))
-
     def set_start(self, moment: datetime) -> None:
         utc_start = moment.replace(tzinfo=timezone.utc)
         self.start_time = utc_start
         self.client.set_tag(self.run_id, "execution_start_utc", _utc_iso(utc_start))
-
     def log_queue(self, prompt_id: str) -> None:
         self.client.set_tag(self.run_id, "prompt_id", prompt_id)
-
     def log_completion(
         self,
         elapsed: float,
@@ -192,8 +165,6 @@ class TrackingSession:
                 file_path = PROJECT_ROOT / path
             if file_path.exists():
                 self.client.log_artifact(self.run_id, str(file_path))
-
-
 def create_session(
     mode: str,
     preset: str | None,
@@ -216,8 +187,6 @@ def create_session(
         workflow=workflow,
         schedule_mode=schedule_mode,
     )
-
-
 def _format_run_line(run: Run) -> str:
     data = run.data
     start_ms = run.info.start_time or 0
@@ -227,8 +196,6 @@ def _format_run_line(run: Run) -> str:
     preset = data.tags.get("preset", "")
     prompt_digest = data.tags.get("prompt_digest", "")
     return f"{run.info.run_id} | {start.isoformat()} | {mode} | {preset} | {elapsed:.2f}s | {prompt_digest}"
-
-
 def _print_run_paths(run: Run) -> None:
     paths = run.data.tags.get("output_paths")
     if not paths:
@@ -236,8 +203,6 @@ def _print_run_paths(run: Run) -> None:
     decoded = json.loads(paths)
     for entry in decoded:
         print(f"  artifact: {entry}")
-
-
 def _list_runs(client: MlflowClient, experiment_id: str) -> None:
     runs = client.search_runs(
         experiment_ids=[experiment_id],
@@ -250,8 +215,6 @@ def _list_runs(client: MlflowClient, experiment_id: str) -> None:
     for run in runs:
         print(_format_run_line(run))
         _print_run_paths(run)
-
-
 def _stats(client: MlflowClient, experiment_id: str) -> None:
     runs = client.search_runs(
         experiment_ids=[experiment_id],
@@ -275,8 +238,6 @@ def _stats(client: MlflowClient, experiment_id: str) -> None:
     for preset, values in presets.items():
         avg = sum(values) / len(values)
         print(f"{preset}: count={len(values)} avg={avg:.2f}")
-
-
 def _compare(client: MlflowClient, run_ids: Sequence[str]) -> None:
     if len(run_ids) < 2:
         print("Need two run ids.")
@@ -296,8 +257,6 @@ def _compare(client: MlflowClient, run_ids: Sequence[str]) -> None:
         right = run_b.data.metrics.get(key, "-")
         marker = "!=" if left != right else "=="
         print(f"{key}: {left} {marker} {right}")
-
-
 def handle_cli(args: Sequence[str]) -> None:
     if not ENABLED:
         print("Tracking disabled.")

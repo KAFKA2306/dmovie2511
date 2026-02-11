@@ -1,8 +1,8 @@
 import asyncio
 import subprocess
 import sys
-
 from automation import COMFY_ROOT
+from automation.logs import append_named_log
 from automation.core import (
     batch_generate,
     generate_templates,
@@ -14,11 +14,8 @@ from automation.models import sync_wan_assets
 from automation.script import generate_basic_render
 from automation.tracking import handle_cli as tracking_handle_cli
 from automation.workflows import WAN_TEMPLATES, load_prompts, load_prompt_defaults
-
 PROMPT_MAP = load_prompts()
 PROMPT_DEFAULTS = load_prompt_defaults()
-
-
 def main() -> None:
     argv = sys.argv[1:]
     if argv and argv[0] in {"start-server", "automate", "render", "download-models", "templates", "scheduled", "experiments"}:
@@ -28,17 +25,37 @@ def main() -> None:
         command = "automate"
         args = argv
     if command == "start-server":
-        subprocess.run([
-            "uv",
-            "run",
-            "python",
-            str(COMFY_ROOT / "main.py"),
-            "--listen",
-            "127.0.0.1",
-            "--port",
-            "8188",
-        ])
-        return
+        process = subprocess.Popen(
+            [
+                "uv",
+                "run",
+                "python",
+                str(COMFY_ROOT / "main.py"),
+                "--listen",
+                "127.0.0.1",
+                "--port",
+                "8188",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+        )
+        stream = process.stdout
+        if stream is not None:
+            for raw in stream:
+                line = raw.rstrip("\n")
+                payload = {
+                    "mode": "start-server",
+                    "preset": "standard",
+                    "prompt_digest": "",
+                    "output_nodes": [],
+                    "message": line,
+                }
+                append_named_log("start-server.jsonl", payload)
+                print(line)
+        code = process.wait()
+        sys.exit(code)
     if command == "automate":
         preset = None
         if "--preset" in args:
