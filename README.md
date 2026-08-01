@@ -1,70 +1,117 @@
-# ComfyUI 自動動画生成プロジェクト
+# dmovie2511 — ComfyUI動画生成の自動実行環境
 
-このプロジェクトは、[ComfyUI](https://github.com/comfyanonymous/ComfyUI) を使用して、高品質な動画を安定して自動生成するための環境を提供します。特に、WAN モデルのような複雑なワークフローを、誰でも簡単に実行できるように設計されています。
+**リポジトリ:** https://github.com/KAFKA2306/dmovie2511
 
-CLI ツールを通じて、サーバーの起動、モデルの同期、動画の生成まで、一貫した操作で実行できます。
+ComfyUIの動画生成ワークフローを、CLIから起動・モデル同期・実行できるようにまとめた自動化プロジェクトです。主にWAN系ワークフローを、`config/workflows.yaml`の設定から再実行できる形で管理します。
 
-## ✨ 主な特徴
+同じ設定を保存することで再現性を高めますが、GPU、ドライバー、ComfyUI、カスタムノード、モデル版が異なる場合に、完全に同じ動画や処理時間になることは保証しません。
 
-- **シンプルな操作**: `automation` モジュールに統一されたコマンドを通じて、すべての操作を簡単に行えます。
-- **再現性の高い動画生成**: `config/workflows.yaml` に定義されたワークフロー設定により、誰が実行しても同じ品質の動画を生成できます。
-- **クリーンな環境**: `uv` と `ruff` を利用した開発パイプラインにより、依存関係の解決やコーディングスタイルを自動で統一します。
+## できること
 
-## 使い方
+- ComfyUIサーバーの起動
+- 必要モデルの取得・配置
+- 登録済みプロンプトから動画生成
+- シーン別テンプレートの実行
+- 共通プリセットによるパラメータ上書き
+- 複数テンプレートの順次処理
+- 実行設定をYAMLで管理
 
-### サーバーの起動
+## 必要環境
 
-動画生成の前に、まず ComfyUI サーバーを起動する必要があります。
+- Pythonと`uv`
+- ComfyUIが動作するGPU環境
+- 対応するGPUドライバーとPyTorch
+- ワークフローが要求するモデル・カスタムノード
+- 動画の後処理に必要な場合はFFmpeg
+
+依存関係の正本は`pyproject.toml`、モデルとワークフローの正本は`config/workflows.yaml`です。
+
+## セットアップ
+
+```bash
+uv sync
+```
+
+## ComfyUIサーバーを起動
 
 ```bash
 uv run python -m automation start-server
 ```
 
-### モデルの同期
+起動後、ComfyUIのURL、待受ポート、GPU認識、カスタムノードの読み込みエラーを確認してください。
 
-`download-models` コマンドを使用すると、`config/workflows.yaml` に定義されたモデルを自動でダウンロード・配置できます。
+## モデルを同期
 
 ```bash
 uv run python -m automation download-models
 ```
 
-### 動画の生成
+`config/workflows.yaml`に記録されたモデル情報をもとに取得・配置します。モデルの利用条件、配布元、必要容量を確認してから実行してください。
 
-- **基本的な使い方**:
-    - `config/workflows.yaml` の `prompts` セクションに登録したプロンプトキーと、ワークフロー名を指定して実行します。
-    - `wan` ワークフローのデフォルト設定で動画を生成する場合は、一行でプロンプトを引用符に包んで実行します（改行すると `wan_neon_coast_flythrough: command not found` になるため注意してください）。
+## 動画を生成
 
-    ```bash
-    uv run python -m automation "wan_default" wan
-    ```
+登録済みのプロンプトキーとワークフロー名を指定します。
 
-- **テンプレートの利用**:
-    - `config/workflows.yaml` の `templates` に、WAN ワークフロー向けのシーン別設定がまとまっています。
-    - テンプレート固有のプロンプトを使う場合は、`prompts` の `wan_template_passthrough` を指定し、テンプレート名（例: `wan_mountain_expedition`）をモードとして指定します。
-
-    ```bash
-    uv run python -m automation "wan_template_passthrough" wan_mountain_expedition
-    ```
-
-    - テンプレートを `config/workflows.yaml` の定義順にまとめて実行する場合は `uv run python -m automation templates` を使用します。
-    - 空文字プロンプトを渡す運用は CLI が KeyError を発生させるため禁止です。
-
-- **プリセットの利用**:
-    - 共通パラメータの切り替えは `config/workflows.yaml` の `presets` セクションにある `standard` プリセットで統一しています。
-    - `ti2v_5b_*` 系プリセットは 2025-11-06T06:00:00Z 時点で 24GB GPU でも OOM が再現されたため使用禁止です。
-    - 実行時に `--preset standard` を付与すると、`standard` の設定で `defaults` が上書きされます。
-
-    ```bash
-    uv run python -m automation "wan_default" wan --preset standard
-    ```
-
-## プロジェクトの構造
-
+```bash
+uv run python -m automation "wan_default" wan
 ```
-.
-├── automation/      # 自動化スクリプトのすべて
-├── config/          # ワークフローの定義ファイル
-├── ComfyUI/         # ComfyUI のコアとランタイム
-├── docs/            # プロジェクトのドキュメント
-├── pyproject.toml   # プロジェクトの依存関係
+
+コマンドは1行で実行してください。シェル上で改行すると、後半が別コマンドとして解釈されます。
+
+## テンプレートを使う
+
+```bash
+uv run python -m automation "wan_template_passthrough" wan_mountain_expedition
 ```
+
+`config/workflows.yaml`のテンプレートを定義順に実行する場合:
+
+```bash
+uv run python -m automation templates
+```
+
+空文字列をプロンプトとして渡す運用は、現在のCLIでは正常に処理できないため使用しません。
+
+## プリセットを使う
+
+```bash
+uv run python -m automation "wan_default" wan --preset standard
+```
+
+`--preset standard`は、`config/workflows.yaml`の`presets.standard`で既定値を上書きします。
+
+`ti2v_5b_*`系プリセットは、リポジトリに記録された2025年11月6日の検証で24GB GPU上のOOMが発生したため、現在の運用では使用禁止です。別環境で再評価する場合は、GPU、解像度、フレーム数、精度、オフロード設定を記録してください。
+
+## 主な構成
+
+```text
+dmovie2511/
+├── automation/           # CLIと自動化処理
+├── config/               # ワークフロー、モデル、プロンプト、プリセット
+├── ComfyUI/              # ComfyUI本体とランタイム
+├── docs/                 # 運用・設計資料
+└── pyproject.toml        # Python依存関係
+```
+
+## 再現性のために保存する情報
+
+- ComfyUIのコミットまたはバージョン
+- カスタムノードと各コミット
+- モデル名、版、取得元、ファイルハッシュ
+- プロンプトとネガティブプロンプト
+- seed
+- sampler / scheduler
+- steps / CFG
+- 解像度、フレーム数、FPS
+- GPU、VRAM、PyTorch、ドライバー
+- 実行日時と生成物
+
+## 注意
+
+- モデルやカスタムノードのライセンスを確認してください
+- 自動ダウンロードしたファイルを再配布しないでください
+- 高解像度・長時間・大きなバッチはVRAM不足を起こしやすくなります
+- 生成動画の内容、人物表現、商用利用可否を公開前に確認してください
+- ComfyUIやモデル更新後は、既存ワークフローがそのまま動くとは限りません
+
+**README最終監査:** 2026-08-01
