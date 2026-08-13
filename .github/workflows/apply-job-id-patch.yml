@@ -16,36 +16,33 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: fix/issue-2-job-id-correlation
-      - name: Normalize only inserted job id indentation
+      - name: Match job id indentation to correlation field
         run: |
           python - <<'PY'
           from pathlib import Path
 
           path = Path("automation/core.py")
-          text = path.read_text(encoding="utf-8")
-          replacements = [
-              (
-                  '                "prompt_digest": digest,\n            "job_id": job_id,\n',
-                  '                "prompt_digest": digest,\n                "job_id": job_id,\n',
-                  2,
-              ),
-              (
-                  '                        "prompt_digest": digest,\n            "job_id": job_id,\n',
-                  '                        "prompt_digest": digest,\n                        "job_id": job_id,\n',
-                  1,
-              ),
-              (
-                  '        "prompt_digest": digest,\n            "job_id": job_id,\n        "schedule_mode": schedule_mode,\n',
-                  '        "prompt_digest": digest,\n        "job_id": job_id,\n        "schedule_mode": schedule_mode,\n',
-                  1,
-              ),
-          ]
-          for old, new, expected in replacements:
-              count = text.count(old)
-              if count != expected:
-                  raise SystemExit(f"expected {expected} matches, found {count}: {old!r}")
-              text = text.replace(old, new)
-          path.write_text(text, encoding="utf-8")
+          lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+          changed = 0
+          seen = 0
+          for index, line in enumerate(lines):
+              if line.strip() != '"job_id": job_id,':
+                  continue
+              seen += 1
+              if index == 0 or lines[index - 1].strip() != '"prompt_digest": digest,':
+                  continue
+              previous = lines[index - 1]
+              indent = previous[: len(previous) - len(previous.lstrip())]
+              replacement = f'{indent}"job_id": job_id,\n'
+              if line != replacement:
+                  lines[index] = replacement
+                  changed += 1
+          if seen != 11:
+              raise SystemExit(f"expected 11 job_id log fields, found {seen}")
+          if changed == 0:
+              raise SystemExit("no indentation changes were necessary")
+          path.write_text("".join(lines), encoding="utf-8")
+          print(f"normalized {changed} fields")
           PY
       - name: Commit formatting normalization
         run: |
