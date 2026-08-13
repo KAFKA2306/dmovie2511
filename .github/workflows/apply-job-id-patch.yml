@@ -1,4 +1,4 @@
-name: Apply scheduler job id patch
+name: Normalize scheduler job id patch
 
 on:
   push:
@@ -16,98 +16,43 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: fix/issue-2-job-id-correlation
-      - name: Apply exact job correlation changes
+      - name: Normalize only inserted job id indentation
         run: |
           python - <<'PY'
           from pathlib import Path
 
           path = Path("automation/core.py")
           text = path.read_text(encoding="utf-8")
-
-          def replace_once(old, new):
-              global text
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"expected one match, found {count}: {old[:100]!r}")
-              text = text.replace(old, new)
-
-          replace_once(
-              "from pathlib import Path\nfrom typing import Any, Dict, Sequence\n",
-              "from pathlib import Path\nfrom typing import Any, Dict, Sequence\nfrom uuid import uuid4\n",
-          )
-          replace_once(
-              "    digest: str,\n    words: int,\n",
-              "    digest: str,\n    job_id: str,\n    words: int,\n",
-          )
-
-          align_start = text.index("async def _align_to_window(")
-          align_end = text.index("class ComfyUIClient:", align_start)
-          align = text[align_start:align_end]
-          if align.count('"prompt_digest": digest,\n') != 4:
-              raise SystemExit("scheduler digest field count changed")
-          align = align.replace(
-              '"prompt_digest": digest,\n',
-              '"prompt_digest": digest,\n            "job_id": job_id,\n',
-          )
-          text = text[:align_start] + align + text[align_end:]
-
-          replace_once(
-              "    options = dict(kwargs)\n    use_schedule_flag = options.pop(\"use_schedule\", None)\n",
-              "    options = dict(kwargs)\n    job_id = options.pop(\"job_id\", None) or uuid4().hex\n    use_schedule_flag = options.pop(\"use_schedule\", None)\n",
-          )
-          replace_once(
-              "            digest,\n            words,\n            used_prompt,\n",
-              "            digest,\n            job_id,\n            words,\n            used_prompt,\n",
-          )
-
-          generate_start = text.index("async def generate_video(")
-          generate_end = text.index("async def generate_templates(", generate_start)
-          generate = text[generate_start:generate_end]
-          if generate.count('"prompt_digest": digest,\n') != 7:
-              raise SystemExit("generate digest field count changed")
-          generate = generate.replace(
-              '"prompt_digest": digest,\n',
-              '"prompt_digest": digest,\n            "job_id": job_id,\n',
-          )
-          text = text[:generate_start] + generate + text[generate_end:]
-
-          pending_start = text.index("def pending_scheduled_jobs()")
-          pending_end = text.index("async def run_scheduled_jobs", pending_start)
-          pending = text[pending_start:pending_end]
           replacements = [
-              ('        digest = entry.get("prompt_digest")\n', '        job_key = entry.get("job_id") or entry.get("prompt_digest")\n'),
-              ('        if not digest:\n', '        if not job_key:\n'),
-              ('            if digest in pending_map:\n', '            if job_key in pending_map:\n'),
-              ('                del pending_map[digest]\n', '                del pending_map[job_key]\n'),
-              ('            if digest in order:\n', '            if job_key in order:\n'),
-              ('                order.remove(digest)\n', '                order.remove(job_key)\n'),
-              ('            pending_map[digest] = entry\n', '            pending_map[job_key] = entry\n'),
-              ('            if digest not in order:\n', '            if job_key not in order:\n'),
-              ('                order.append(digest)\n', '                order.append(job_key)\n'),
-              ('    for digest in order:\n', '    for job_key in order:\n'),
-              ('        entry = pending_map.get(digest)\n', '        entry = pending_map.get(job_key)\n'),
+              (
+                  '                "prompt_digest": digest,\n            "job_id": job_id,\n',
+                  '                "prompt_digest": digest,\n                "job_id": job_id,\n',
+                  2,
+              ),
+              (
+                  '                        "prompt_digest": digest,\n            "job_id": job_id,\n',
+                  '                        "prompt_digest": digest,\n                        "job_id": job_id,\n',
+                  1,
+              ),
+              (
+                  '        "prompt_digest": digest,\n            "job_id": job_id,\n        "schedule_mode": schedule_mode,\n',
+                  '        "prompt_digest": digest,\n        "job_id": job_id,\n        "schedule_mode": schedule_mode,\n',
+                  1,
+              ),
           ]
-          expected_counts = [1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 1]
-          for (old, new), expected in zip(replacements, expected_counts):
-              count = pending.count(old)
+          for old, new, expected in replacements:
+              count = text.count(old)
               if count != expected:
-                  raise SystemExit(f"pending replacement count {count} != {expected}: {old!r}")
-              pending = pending.replace(old, new)
-          text = text[:pending_start] + pending + text[pending_end:]
-
-          replace_once(
-              '        parameters["use_schedule"] = False\n        mode = entry.get("mode", "wan")\n',
-              '        parameters["use_schedule"] = False\n        job_id = entry.get("job_id")\n        if job_id:\n            parameters["job_id"] = job_id\n        mode = entry.get("mode", "wan")\n',
-          )
-
+                  raise SystemExit(f"expected {expected} matches, found {count}: {old!r}")
+              text = text.replace(old, new)
           path.write_text(text, encoding="utf-8")
           PY
-      - name: Commit exact patch
+      - name: Commit formatting normalization
         run: |
           git diff --check
-          git diff -- automation/core.py
+          python -m compileall -q automation/core.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add automation/core.py
-          git commit -m "fix: correlate scheduler events with unique job ids"
+          git commit -m "style: normalize scheduler job id fields"
           git push origin HEAD:fix/issue-2-job-id-correlation
