@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timedelta, timezone, time as dt_time
 from pathlib import Path
 from typing import Any, Dict, Sequence
+from uuid import uuid4
 import httpx
 import websockets
 from zoneinfo import ZoneInfo
@@ -178,6 +179,7 @@ async def _align_to_window(
     mode: str,
     preset: str | None,
     digest: str,
+    job_id: str,
     words: int,
     prompt: str,
     schedule_mode: str,
@@ -192,6 +194,7 @@ async def _align_to_window(
                 "mode": mode,
                 "preset": preset,
                 "prompt_digest": digest,
+            "job_id": job_id,
                 "window_start_local": window_start.isoformat(timespec="seconds"),
                 "window_start_utc": _utc_stamp(window_start),
                 "words": words,
@@ -208,6 +211,7 @@ async def _align_to_window(
             "mode": mode,
             "preset": preset,
             "prompt_digest": digest,
+            "job_id": job_id,
             "window_start_local": window_start.isoformat(timespec="seconds"),
             "window_start_utc": _utc_stamp(window_start),
             "words": words,
@@ -229,6 +233,7 @@ async def _align_to_window(
                         "mode": mode,
                         "preset": preset,
                         "prompt_digest": digest,
+            "job_id": job_id,
                         "window_start_local": window_start.isoformat(timespec="seconds"),
                         "window_start_utc": _utc_stamp(window_start),
                         "words": words,
@@ -246,6 +251,7 @@ async def _align_to_window(
             "mode": mode,
             "preset": preset,
             "prompt_digest": digest,
+            "job_id": job_id,
             "window_start_local": window_start.isoformat(timespec="seconds"),
             "window_start_utc": _utc_stamp(window_start),
             "words": words,
@@ -505,6 +511,7 @@ def build_wan_workflow(prompt: str, **kwargs: Any) -> tuple[Dict[str, Any], Dict
 async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[str, Any]:
     client = ComfyUIClient()
     options = dict(kwargs)
+    job_id = options.pop("job_id", None) or uuid4().hex
     use_schedule_flag = options.pop("use_schedule", None)
     preset = options.get("preset")
     parameters_snapshot = dict(options)
@@ -549,6 +556,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             mode,
             preset,
             digest,
+            job_id,
             words,
             used_prompt,
             schedule_mode,
@@ -562,6 +570,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
                 "mode": mode,
                 "preset": preset,
                 "prompt_digest": digest,
+            "job_id": job_id,
                 "window_start_local": window_start.isoformat(timespec="seconds"),
                 "window_start_utc": _utc_stamp(window_start),
                 "words": words,
@@ -579,6 +588,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             "mode": mode,
             "preset": preset,
             "prompt_digest": digest,
+            "job_id": job_id,
             "window_start_local": window_start.isoformat(timespec="seconds"),
             "window_start_utc": _utc_stamp(window_start),
             "words": words,
@@ -591,6 +601,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             "mode": mode,
             "preset": preset,
             "prompt_digest": digest,
+            "job_id": job_id,
             "words": words,
             "schedule_mode": schedule_mode,
         }
@@ -604,6 +615,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             "preset": preset,
             "prompt_id": prompt_id,
             "prompt_digest": digest,
+            "job_id": job_id,
             "schedule_mode": schedule_mode,
         }
     )
@@ -611,6 +623,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
         "mode": mode,
         "preset": preset,
         "prompt_digest": digest,
+            "job_id": job_id,
         "schedule_mode": schedule_mode,
     }
     await client.wait_for_completion(prompt_id, wait_context)
@@ -635,6 +648,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             "preset": preset,
             "prompt_id": prompt_id,
             "prompt_digest": digest,
+            "job_id": job_id,
             "elapsed_seconds": round(elapsed, 2),
             "output_nodes": nodes,
             "output_paths": paths,
@@ -647,6 +661,7 @@ async def generate_video(prompt: str, mode: str = "wan", **kwargs: Any) -> Dict[
             "mode": mode,
             "preset": preset,
             "prompt_digest": digest,
+            "job_id": job_id,
             "elapsed_seconds": round(elapsed, 2),
             "window_start_local": window_start.isoformat(timespec="seconds"),
             "window_start_utc": _utc_stamp(window_start),
@@ -677,29 +692,29 @@ def pending_scheduled_jobs() -> list[Dict[str, Any]]:
     pending_map: dict[str, Dict[str, Any]] = {}
     order: list[str] = []
     for entry in entries:
-        digest = entry.get("prompt_digest")
-        if not digest:
+        job_key = entry.get("job_id") or entry.get("prompt_digest")
+        if not job_key:
             continue
         event = entry.get("event")
         if event in {"execution_started", "execution_completed"}:
-            if digest in pending_map:
-                del pending_map[digest]
-            if digest in order:
-                order.remove(digest)
+            if job_key in pending_map:
+                del pending_map[job_key]
+            if job_key in order:
+                order.remove(job_key)
             continue
         if event == "schedule_immediate":
-            if digest in pending_map:
-                del pending_map[digest]
-            if digest in order:
-                order.remove(digest)
+            if job_key in pending_map:
+                del pending_map[job_key]
+            if job_key in order:
+                order.remove(job_key)
             continue
         if event in {"scheduled", "awaiting_window", "window_open", "window_active"}:
-            pending_map[digest] = entry
-            if digest not in order:
-                order.append(digest)
+            pending_map[job_key] = entry
+            if job_key not in order:
+                order.append(job_key)
     pending: list[Dict[str, Any]] = []
-    for digest in order:
-        entry = pending_map.get(digest)
+    for job_key in order:
+        entry = pending_map.get(job_key)
         if entry:
             pending.append(entry)
     return sorted(pending, key=lambda item: item.get("window_start_utc", item.get("timestamp", "")))
@@ -711,6 +726,9 @@ async def run_scheduled_jobs(entries: list[Dict[str, Any]]) -> list[Dict[str, An
         if preset and "preset" not in parameters:
             parameters["preset"] = preset
         parameters["use_schedule"] = False
+        job_id = entry.get("job_id")
+        if job_id:
+            parameters["job_id"] = job_id
         mode = entry.get("mode", "wan")
         prompt = entry.get("prompt", "")
         results.append(await generate_video(prompt, mode, **parameters))
