@@ -57,7 +57,7 @@ uv run python -m automation download-models
 uv run python -m automation "wan_default" wan
 ```
 
-通常の動画生成は`config/workflows.yaml`の`scheduling`契約に従います。現在は`Asia/Tokyo`の03:00〜05:00を実行ウィンドウとし、ウィンドウ外では`ComfyUI/logs/automation_schedule.jsonl`へ`scheduled`を先に記録して開始時刻まで待機します。実行開始・完了も同じログへ追記され、`prompt_digest`で予約と実行を対応付けます。
+通常の動画生成は`config/workflows.yaml`の`scheduling`契約に従います。現在は`Asia/Tokyo`の03:00〜05:00を実行ウィンドウとし、ウィンドウ外では`ComfyUI/logs/automation_schedule.jsonl`へ`scheduled`を先に記録して開始時刻まで待機します。各予約には一意な`job_id`を付与し、`scheduled`から実行開始・完了まで同じIDを引き継ぐため、同一プロンプトを複数予約しても個別に追跡できます。`prompt_digest`はプロンプト内容の照合用として併記します。
 
 予約状況だけを確認する場合:
 

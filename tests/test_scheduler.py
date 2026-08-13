@@ -1,8 +1,11 @@
 import asyncio
+import json
 import sys
+import tempfile
 import types
 import unittest
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
 
@@ -53,6 +56,7 @@ class SchedulerContractTests(unittest.IsolatedAsyncioTestCase):
                 mode="wan",
                 preset="standard",
                 digest="abc123",
+                job_id="job-1",
                 words=2,
                 prompt="test prompt",
                 schedule_mode="window",
@@ -62,11 +66,12 @@ class SchedulerContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(window, expected_window)
         self.assertEqual([entry["event"] for entry in logs], ["scheduled", "window_open"])
         self.assertEqual(logs[0]["prompt_digest"], "abc123")
+        self.assertTrue(all(entry["job_id"] == "job-1" for entry in logs))
         self.assertEqual(logs[0]["window_start_local"], expected_window.isoformat(timespec="seconds"))
         self.assertEqual(logs[0]["window_start_utc"], "2026-08-13T18:00:00Z")
         sleep.assert_awaited_once_with(7 * 60 * 60)
 
-    async def test_execution_logs_started_and_completed_with_same_digest(self):
+    async def test_execution_logs_share_unique_job_id(self):
         zone = ZoneInfo("Asia/Tokyo")
         window = datetime(2026, 8, 14, 3, 0, tzinfo=zone)
         logs = []
@@ -93,7 +98,53 @@ class SchedulerContractTests(unittest.IsolatedAsyncioTestCase):
         events = [entry for entry in logs if entry["event"].startswith("execution_")]
         self.assertEqual([entry["event"] for entry in events], ["execution_started", "execution_completed"])
         self.assertEqual(events[0]["prompt_digest"], events[1]["prompt_digest"])
+        self.assertEqual(events[0]["job_id"], events[1]["job_id"])
+        self.assertTrue(events[0]["job_id"])
         self.assertEqual(events[0]["window_start_local"], events[1]["window_start_local"])
+
+    def test_same_prompt_can_have_multiple_pending_jobs(self):
+        entries = [
+            {
+                "event": "scheduled",
+                "job_id": "job-a",
+                "prompt_digest": "same-digest",
+                "window_start_utc": "2026-08-13T18:00:00Z",
+            },
+            {
+                "event": "scheduled",
+                "job_id": "job-b",
+                "prompt_digest": "same-digest",
+                "window_start_utc": "2026-08-13T18:00:00Z",
+            },
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            log_path = Path(tmp) / "schedule.jsonl"
+            log_path.write_text("\n".join(json.dumps(entry) for entry in entries) + "\n", encoding="utf-8")
+            with patch.object(core, "SCHEDULE_LOG_FILE", log_path):
+                pending = core.pending_scheduled_jobs()
+
+        self.assertEqual([entry["job_id"] for entry in pending], ["job-a", "job-b"])
+
+    async def test_run_now_preserves_reserved_job_id(self):
+        entry = {
+            "event": "scheduled",
+            "job_id": "job-a",
+            "prompt_digest": "same-digest",
+            "mode": "wan",
+            "prompt": "same prompt",
+            "parameters": {"preset": "standard"},
+        }
+        generate = AsyncMock(return_value={"outputs": {}})
+        with patch.object(core, "generate_video", generate):
+            await core.run_scheduled_jobs([entry])
+
+        generate.assert_awaited_once_with(
+            "same prompt",
+            "wan",
+            preset="standard",
+            use_schedule=False,
+            job_id="job-a",
+        )
 
     async def test_batch_generation_is_strictly_sequential(self):
         order = []
