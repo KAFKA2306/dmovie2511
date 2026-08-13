@@ -28,7 +28,7 @@ jobs:
               global text
               count = text.count(old)
               if count != 1:
-                  raise SystemExit(f"expected one match, found {count}: {old[:80]!r}")
+                  raise SystemExit(f"expected one match, found {count}: {old[:100]!r}")
               text = text.replace(old, new)
 
           replace_once(
@@ -43,12 +43,11 @@ jobs:
           align_start = text.index("async def _align_to_window(")
           align_end = text.index("class ComfyUIClient:", align_start)
           align = text[align_start:align_end]
-          expected_align = align.count('"prompt_digest": digest,\n')
-          if expected_align != 4:
-              raise SystemExit(f"expected 4 scheduler digest fields, found {expected_align}")
+          if align.count('"prompt_digest": digest,\n') != 4:
+              raise SystemExit("scheduler digest field count changed")
           align = align.replace(
               '"prompt_digest": digest,\n',
-              '"prompt_digest": digest,\n                "job_id": job_id,\n',
+              '"prompt_digest": digest,\n            "job_id": job_id,\n',
           )
           text = text[:align_start] + align + text[align_end:]
 
@@ -64,77 +63,41 @@ jobs:
           generate_start = text.index("async def generate_video(")
           generate_end = text.index("async def generate_templates(", generate_start)
           generate = text[generate_start:generate_end]
-          digest_count = generate.count('"prompt_digest": digest,\n')
-          if digest_count != 7:
-              raise SystemExit(f"expected 7 generate digest fields, found {digest_count}")
+          if generate.count('"prompt_digest": digest,\n') != 7:
+              raise SystemExit("generate digest field count changed")
           generate = generate.replace(
               '"prompt_digest": digest,\n',
-              '"prompt_digest": digest,\n                "job_id": job_id,\n',
+              '"prompt_digest": digest,\n            "job_id": job_id,\n',
           )
           text = text[:generate_start] + generate + text[generate_end:]
 
           pending_start = text.index("def pending_scheduled_jobs()")
           pending_end = text.index("async def run_scheduled_jobs", pending_start)
           pending = text[pending_start:pending_end]
-          old_loop = '''    for entry in entries:
-              digest = entry.get("prompt_digest")
-              if not digest:
-                  continue
-              event = entry.get("event")
-              if event in {"execution_started", "execution_completed"}:
-                  if digest in pending_map:
-                      del pending_map[digest]
-                  if digest in order:
-                      order.remove(digest)
-                  continue
-              if event == "schedule_immediate":
-                  if digest in pending_map:
-                      del pending_map[digest]
-                  if digest in order:
-                      order.remove(digest)
-                  continue
-              if event in {"scheduled", "awaiting_window", "window_open", "window_active"}:
-                  pending_map[digest] = entry
-                  if digest not in order:
-                      order.append(digest)
-          '''
-          new_loop = '''    for entry in entries:
-              job_key = entry.get("job_id") or entry.get("prompt_digest")
-              if not job_key:
-                  continue
-              event = entry.get("event")
-              if event in {"execution_started", "execution_completed"}:
-                  if job_key in pending_map:
-                      del pending_map[job_key]
-                  if job_key in order:
-                      order.remove(job_key)
-                  continue
-              if event == "schedule_immediate":
-                  if job_key in pending_map:
-                      del pending_map[job_key]
-                  if job_key in order:
-                      order.remove(job_key)
-                  continue
-              if event in {"scheduled", "awaiting_window", "window_open", "window_active"}:
-                  pending_map[job_key] = entry
-                  if job_key not in order:
-                      order.append(job_key)
-          '''
-          if pending.count(old_loop) != 1:
-              raise SystemExit("pending scheduler loop did not match exactly")
-          pending = pending.replace(old_loop, new_loop)
+          replacements = [
+              ('        digest = entry.get("prompt_digest")\n', '        job_key = entry.get("job_id") or entry.get("prompt_digest")\n'),
+              ('        if not digest:\n', '        if not job_key:\n'),
+              ('            if digest in pending_map:\n', '            if job_key in pending_map:\n'),
+              ('                del pending_map[digest]\n', '                del pending_map[job_key]\n'),
+              ('            if digest in order:\n', '            if job_key in order:\n'),
+              ('                order.remove(digest)\n', '                order.remove(job_key)\n'),
+              ('            pending_map[digest] = entry\n', '            pending_map[job_key] = entry\n'),
+              ('            if digest not in order:\n', '            if job_key not in order:\n'),
+              ('                order.append(digest)\n', '                order.append(job_key)\n'),
+              ('    for digest in order:\n', '    for job_key in order:\n'),
+              ('        entry = pending_map.get(digest)\n', '        entry = pending_map.get(job_key)\n'),
+          ]
+          expected_counts = [1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 1]
+          for (old, new), expected in zip(replacements, expected_counts):
+              count = pending.count(old)
+              if count != expected:
+                  raise SystemExit(f"pending replacement count {count} != {expected}: {old!r}")
+              pending = pending.replace(old, new)
           text = text[:pending_start] + pending + text[pending_end:]
 
           replace_once(
-              '''        parameters["use_schedule"] = False
-                  mode = entry.get("mode", "wan")
-          ''',
-              '''        parameters["use_schedule"] = False
-                  job_id = entry.get("job_id")
-                  if job_id:
-                      parameters["job_id"] = job_id
-                  mode = entry.get("mode", "wan")
-          ''',
+              '        parameters["use_schedule"] = False\n        mode = entry.get("mode", "wan")\n',
+              '        parameters["use_schedule"] = False\n        job_id = entry.get("job_id")\n        if job_id:\n            parameters["job_id"] = job_id\n        mode = entry.get("mode", "wan")\n',
           )
 
           path.write_text(text, encoding="utf-8")
