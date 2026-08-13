@@ -14,6 +14,7 @@ ComfyUIの動画生成ワークフローを、CLIから起動・モデル同期�
 - シーン別テンプレートの実行
 - 共通プリセットによるパラメータ上書き
 - 複数テンプレートの順次処理
+- 指定時間帯への予約実行と逐次処理
 - 実行設定をYAMLで管理
 
 ## 必要環境
@@ -55,6 +56,28 @@ uv run python -m automation download-models
 ```bash
 uv run python -m automation "wan_default" wan
 ```
+
+通常の動画生成は`config/workflows.yaml`の`scheduling`契約に従います。現在は`Asia/Tokyo`の03:00〜05:00を実行ウィンドウとし、ウィンドウ外では`ComfyUI/logs/automation_schedule.jsonl`へ`scheduled`を先に記録して開始時刻まで待機します。実行開始・完了も同じログへ追記され、`prompt_digest`で予約と実行を対応付けます。
+
+予約状況だけを確認する場合:
+
+```bash
+uv run python -m automation scheduled
+```
+
+保留中の予約を運用判断で即時実行する場合:
+
+```bash
+uv run python -m automation scheduled --run-now
+```
+
+スケジュールを明示的に迂回して即時実行する場合:
+
+```bash
+uv run python -m automation "wan_default" wan --no-schedule
+```
+
+複数プロンプトは`batch_generate`で1件ずつ完了を待ってから次を投入するため、同一プロセスから並列にGPUジョブを投入しません。
 
 コマンドは1行で実行してください。シェル上で改行すると、後半が別コマンドとして解釈されます。
 
@@ -114,4 +137,4 @@ dmovie2511/
 - 生成動画の内容、人物表現、商用利用可否を公開前に確認してください
 - ComfyUIやモデル更新後は、既存ワークフローがそのまま動くとは限りません
 
-**README最終監査:** 2026-08-01
+**README最終監査:** 2026-08-13

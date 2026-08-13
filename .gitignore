@@ -24,6 +24,7 @@ Thumbs.db
 
 # Log files
 *.log
+ComfyUI/logs/
 
 # Local settings
 .claude/

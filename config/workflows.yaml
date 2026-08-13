@@ -126,10 +126,10 @@ templates:
     filename_prefix: wan_jazz_singer
 
 scheduling:
-  enabled: false
+  enabled: true
   timezone: Asia/Tokyo
   metadata_log: ComfyUI/logs/automation_schedule.jsonl
-  waiting_log_interval_seconds: 300
+  waiting_log_interval_seconds: 0
   window:
     start_local: "03:00"
     end_local: "05:00"
