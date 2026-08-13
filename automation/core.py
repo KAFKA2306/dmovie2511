@@ -218,8 +218,8 @@ async def _align_to_window(
     )
     delay = (window_start - now).total_seconds()
     if delay > 0:
+        remaining = delay
         if WAIT_INTERVAL > 0:
-            remaining = delay
             while remaining > WAIT_INTERVAL:
                 await asyncio.sleep(WAIT_INTERVAL)
                 remaining -= WAIT_INTERVAL
@@ -238,9 +238,8 @@ async def _align_to_window(
                         "parameters": parameters,
                     }
                 )
-                await asyncio.sleep(remaining)
-            else:
-                await asyncio.sleep(delay)
+        if remaining > 0:
+            await asyncio.sleep(remaining)
     _write_schedule_log(
         {
             "event": "window_open",
