@@ -1,5 +1,7 @@
 # dmovie2511 — ComfyUI動画生成の自動実行環境
 
+[![CI](https://github.com/KAFKA2306/dmovie2511/actions/workflows/ci.yml/badge.svg)](https://github.com/KAFKA2306/dmovie2511/actions/workflows/ci.yml)
+
 **リポジトリ:** https://github.com/KAFKA2306/dmovie2511
 
 ComfyUIの動画生成ワークフローを、CLIから起動・モデル同期・実行できるようにまとめた自動化プロジェクトです。主にWAN系ワークフローを、`config/workflows.yaml`の設定から再実行できる形で管理します。
