@@ -18,3 +18,11 @@ PEP 8 に従い、Python モジュール、関数、変数には4スペースの
 
 ## コミットとプルリクエストのガイドライン
 コミットの件名は、アップストリームのスタイル（`Fix WAN multi-GPU scheduling (#123)`）を反映し、72文字以内のセンテンスケースで記述します。履歴をバイセクト可能に保つため、関連する変更はコミットごとにグループ化します。プルリクエストには、ワークフローの変更、必要なアセットまたはAPIキーのリスト、`uv run python -m automation "prompt" wan` 実行時の CLI ログ、および関連する課題または議論へのリンクを記述する必要があります。新しいカスタムノードフォルダについては、レビュー担当者がパッケージングを確認できるように文書化してください。
+
+## Outcome-first task interpretation (Altitude / Depth / Range / Speed)
+
+- **Altitude:** Interpret a task as a verifiable user outcome, not only the named intermediate step. Infer the smallest justified acceptance criteria from the request and current repository state; do not silently expand scope or override explicit instructions.
+- **Depth:** Use primary/current evidence and real domain tools and methods. Verify the actual postcondition independently of agent self-report, preferably on the exact changed revision or target runtime.
+- **Range:** Combine code, data, tests, runtime/UI, and domain expertise when that materially improves the outcome, while respecting canonical owners and avoiding duplicate systems.
+- **Speed:** Complete authorized read-only and reversible work through implementation, focused checks, and read-back without unnecessary approval loops. Bound retries and stop at the proven outcome.
+- These principles never bypass repository-specific security, privacy, permission, publication, spending, destructive-action, or release boundaries. State verified results and any remaining `UNVERIFIED` layers.
